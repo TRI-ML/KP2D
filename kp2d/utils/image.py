@@ -58,6 +58,8 @@ def image_grid(B, H, W, dtype, device, ones=True, normalized=False):
         Tensor dtype
     device: str
         Tensor device
+    ones : bool
+        Use (x, y, 1) coordinates
     normalized: bool
         Normalized image coordinates or integer-grid.
 
@@ -69,8 +71,8 @@ def image_grid(B, H, W, dtype, device, ones=True, normalized=False):
     xs, ys = meshgrid(B, H, W, dtype, device, normalized=normalized)
     coords = [xs, ys]
     if ones:
-        coords.append(torch.ones_like(xs)) # BHW
-    grid = torch.stack(coords, dim=1) # B3HW
+        coords.append(torch.ones_like(xs))  # BHW
+    grid = torch.stack(coords, dim=1)  # B3HW
     return grid
 
 
@@ -82,8 +84,9 @@ def to_gray_normalized(images):
     images: torch.Tensor
         Input images.
 
-    Returns:
-        normalized_images: torch.Tensor
+    Returns
+    -------
+    normalized_images: torch.Tensor
         Normalized grayscale images.
     """
     assert len(images.shape) == 4
@@ -101,8 +104,9 @@ def to_color_normalized(images):
     images: torch.Tensor
         Input images.
 
-    Returns:
-        normalized_images: torch.Tensor
+    Returns
+    -------
+    normalized_images: torch.Tensor
         Normalized grayscale images.
     """
     assert len(images.shape) == 4

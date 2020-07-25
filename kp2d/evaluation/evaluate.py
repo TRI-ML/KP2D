@@ -45,7 +45,7 @@ def evaluate_keypoint_net(data_loader, keypoint_net, output_shape=(320, 240), to
 
             score_1, coord_1, desc1 = keypoint_net(image)
             score_2, coord_2, desc2 = keypoint_net(warped_image)
-            B,_,Hc,Wc = desc1.shape
+            B, _, Hc, Wc = desc1.shape
 
             # Scores & Descriptors
             score_1 = torch.cat([coord_1, score_1], dim=1).view(3, -1).t().cpu().numpy()
@@ -54,10 +54,10 @@ def evaluate_keypoint_net(data_loader, keypoint_net, output_shape=(320, 240), to
             desc2 = desc2.view(256, Hc, Wc).view(256, -1).t().cpu().numpy()
             
             # Filter based on confidence threshold
-            desc1 = desc1[score_1[:,2]>conf_threshold,:]
-            desc2 = desc2[score_2[:,2]>conf_threshold,:]
-            score_1 = score_1[score_1[:,2]>conf_threshold, :]
-            score_2 = score_2[score_2[:,2]>conf_threshold, :]
+            desc1 = desc1[score_1[: 2] > conf_threshold, :]
+            desc2 = desc2[score_2[:, 2] > conf_threshold, :]
+            score_1 = score_1[score_1[:, 2] > conf_threshold, :]
+            score_2 = score_2[score_2[:, 2] > conf_threshold, :]
 
             # Prepare data for eval
             data = {'image': sample['image'].numpy().squeeze(),
@@ -84,4 +84,5 @@ def evaluate_keypoint_net(data_loader, keypoint_net, output_shape=(320, 240), to
             mscore = compute_matching_score(data, keep_k_points=top_k)
             MScore.append(mscore)
 
-    return np.mean(repeatability), np.mean(localization_err), np.mean(correctness1), np.mean(correctness3), np.mean(correctness5), np.mean(MScore)
+    return np.mean(repeatability), np.mean(localization_err), \
+           np.mean(correctness1), np.mean(correctness3), np.mean(correctness5), np.mean(MScore)

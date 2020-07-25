@@ -32,7 +32,9 @@ def main():
     model_args = checkpoint['config']['model']['params']
 
     # Create and load disp net
-    keypoint_net = KeypointNet(use_color=model_args['use_color'], do_upsample=model_args['do_upsample'], do_cross=model_args['do_cross'])
+    keypoint_net = KeypointNet(use_color=model_args['use_color'],
+                               do_upsample=model_args['do_upsample'],
+                               do_cross=model_args['do_cross'])
     keypoint_net.load_state_dict(checkpoint['state_dict'])
     keypoint_net = keypoint_net.cuda()
     keypoint_net.eval()
@@ -45,14 +47,15 @@ def main():
     ]
 
     for params in eval_params:
-        hp_dataset = PatchesDataset(root_dir=args.input_dir, use_color=True, output_shape=params['res'], type='a')
+        hp_dataset = PatchesDataset(root_dir=args.input_dir, use_color=True,
+                                    output_shape=params['res'], type='a')
         data_loader = DataLoader(hp_dataset,
-                    batch_size=1,
-                    pin_memory=False,
-                    shuffle=False,
-                    num_workers=8,
-                    worker_init_fn=None,
-                    sampler=None)
+                                 batch_size=1,
+                                 pin_memory=False,
+                                 shuffle=False,
+                                 num_workers=8,
+                                 worker_init_fn=None,
+                                 sampler=None)
 
         print(colored('Evaluating for {} -- top_k {}'.format(params['res'], params['top_k']),'green'))
         rep, loc, c1, c3, c5, mscore = evaluate_keypoint_net(
@@ -68,6 +71,7 @@ def main():
         print('Correctness d3 {:.3f}'.format(c3))
         print('Correctness d5 {:.3f}'.format(c5))
         print('MScore {:.3f}'.format(mscore))
+
 
 if __name__ == '__main__':
     main()
