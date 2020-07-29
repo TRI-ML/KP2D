@@ -54,7 +54,7 @@ def evaluate_keypoint_net(data_loader, keypoint_net, output_shape=(320, 240), to
             desc2 = desc2.view(256, Hc, Wc).view(256, -1).t().cpu().numpy()
             
             # Filter based on confidence threshold
-            desc1 = desc1[score_1[: 2] > conf_threshold, :]
+            desc1 = desc1[score_1[:, 2] > conf_threshold, :]
             desc2 = desc2[score_2[:, 2] > conf_threshold, :]
             score_1 = score_1[score_1[:, 2] > conf_threshold, :]
             score_2 = score_2[score_2[:, 2] > conf_threshold, :]
