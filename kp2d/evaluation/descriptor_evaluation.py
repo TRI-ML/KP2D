@@ -12,8 +12,8 @@ from kp2d.utils.keypoints import warp_keypoints
 
 
 def select_k_best(points, descriptors, k):
-    """ Select the k most probable points (and strip their proba).
-    points has shape (num_points, 3) where the last coordinate is the proba. 
+    """ Select the k most probable points (and strip their probability).
+    points has shape (num_points, 3) where the last coordinate is the probability.
 
     Parameters
     ----------
@@ -27,7 +27,7 @@ def select_k_best(points, descriptors, k):
     -------
     
     selected_points: numpy.ndarray (k,2)
-        k most probably keypoints.
+        k most probable keypoints.
     selected_descriptors: numpy.ndarray (k,256)
         Descriptors corresponding to the k most probable keypoints.
     """
@@ -61,14 +61,13 @@ def keep_shared_points(keypoints, descriptors, H, shape, keep_k_points=1000):
     Returns
     -------    
     selected_points: numpy.ndarray (k,2)
-        k most probably keypoints.
+        k most probable keypoints.
     selected_descriptors: numpy.ndarray (k,256)
         Descriptors corresponding to the k most probable keypoints.
     """
     
     def keep_true_keypoints(points, descriptors, H, shape):
-        """ Keep only the points whose warped coordinates by H
-        are still inside shape. """
+        """ Keep only the points whose warped coordinates by H are still inside shape. """
         warped_points = warp_keypoints(points[:, [1, 0]], H)
         warped_points[:, [0, 1]] = warped_points[:, [1, 0]]
         mask = (warped_points[:, 0] >= 0) & (warped_points[:, 0] < shape[0]) &\
@@ -111,7 +110,7 @@ def compute_matching_score(data, keep_k_points=1000):
     shape = data['image_shape']
     real_H = data['homography']
 
-    # # Filter out predictions
+    # Filter out predictions
     keypoints = data['prob'][:, :2].T
     keypoints = keypoints[::-1]
     prob = data['prob'][:, 2]
@@ -202,7 +201,7 @@ def compute_homography(data, keep_k_points=1000):
     shape = data['image_shape']
     real_H = data['homography']
 
-    # # Filter out predictions
+    # Filter out predictions
     keypoints = data['prob'][:, :2].T
     keypoints = keypoints[::-1]
     prob = data['prob'][:, 2]
@@ -229,16 +228,19 @@ def compute_homography(data, keep_k_points=1000):
     m_warped_keypoints = warped_keypoints[matches_idx, :]
 
     # Estimate the homography between the matches using RANSAC
-    H, inliers = cv2.findHomography(m_keypoints[:, [1, 0]], m_warped_keypoints[:, [1, 0]], cv2.RANSAC, 3, maxIters=5000)
+    H, _ = cv2.findHomography(m_keypoints[:, [1, 0]],
+                              m_warped_keypoints[:, [1, 0]], cv2.RANSAC, 3, maxIters=5000)
 
     if H is None:
         return 0, 0, 0
 
-    inliers = inliers.flatten()
     shape = shape[::-1]
 
     # Compute correctness
-    corners = np.array([[0, 0, 1], [0, shape[1] - 1, 1], [shape[0] - 1, 0, 1], [shape[0] - 1, shape[1] - 1, 1]])
+    corners = np.array([[0, 0, 1],
+                        [0, shape[1] - 1, 1],
+                        [shape[0] - 1, 0, 1],
+                        [shape[0] - 1, shape[1] - 1, 1]])
     real_warped_corners = np.dot(corners, np.transpose(real_H))
     real_warped_corners = real_warped_corners[:, :2] / real_warped_corners[:, 2:]
     warped_corners = np.dot(corners, np.transpose(H))

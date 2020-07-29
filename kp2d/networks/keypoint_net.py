@@ -88,7 +88,6 @@ class KeypointNet(torch.nn.Module):
         self.cell = 8
         self.upsample = torch.nn.PixelShuffle(upscale_factor=2)
 
-
     def forward(self, x):
         """
         Processes a batch of images.
@@ -151,32 +150,32 @@ class KeypointNet(torch.nn.Module):
 
         step = (self.cell-1) / 2.
         center_base = image_grid(B, Hc, Wc,
-                                dtype=center_shift.dtype,
-                                device=center_shift.device,
-                                ones=False, normalized=False).mul(self.cell) + step
+                                 dtype=center_shift.dtype,
+                                 device=center_shift.device,
+                                 ones=False, normalized=False).mul(self.cell) + step
 
         coord_un = center_base.add(center_shift.mul(self.cross_ratio * step))
         coord = coord_un.clone()
-        coord[:,0] = torch.clamp(coord_un[:,0], min=0, max=W-1)
-        coord[:,1] = torch.clamp(coord_un[:,1], min=0, max=H-1)
+        coord[:, 0] = torch.clamp(coord_un[:, 0], min=0, max=W-1)
+        coord[:, 1] = torch.clamp(coord_un[:, 1], min=0, max=H-1)
 
         feat = self.relu(self.convFa(x))
         if self.dropout:
             feat = self.dropout(feat)
         if self.do_upsample:
             feat = self.upsample(self.convFb(feat))
-            feat = torch.cat([feat,skip], dim=1)
+            feat = torch.cat([feat, skip], dim=1)
         feat = self.relu(self.convFaa(feat))
         feat = self.convFbb(feat)
 
         if self.training is False:
-            coord_norm = coord[:,:2].clone()
-            coord_norm[:,0] = (coord_norm[:,0] / (float(W-1)/2.)) - 1.
-            coord_norm[:,1] = (coord_norm[:,1] / (float(H-1)/2.)) - 1.
+            coord_norm = coord[:, :2].clone()
+            coord_norm[:, 0] = (coord_norm[:, 0] / (float(W-1)/2.)) - 1.
+            coord_norm[:, 1] = (coord_norm[:, 1] / (float(H-1)/2.)) - 1.
             coord_norm = coord_norm.permute(0, 2, 3, 1)
 
             feat = torch.nn.functional.grid_sample(feat, coord_norm)
 
-            dn = torch.norm(feat, p=2, dim=1) # Compute the norm.
-            feat = feat.div(torch.unsqueeze(dn, 1)) # Divide by norm to normalize.
+            dn = torch.norm(feat, p=2, dim=1)  # Compute the norm.
+            feat = feat.div(torch.unsqueeze(dn, 1))  # Divide by norm to normalize.
         return score, coord, feat

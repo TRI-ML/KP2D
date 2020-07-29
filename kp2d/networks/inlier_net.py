@@ -3,7 +3,8 @@
 import torch
 import torch.nn.functional as F
 
-# Slightly modified version of 1d-CNN from https://arxiv.org/abs/1905.04132. More details: https://github.com/vislearn/ngransac
+# Slightly modified version of 1d-CNN from https://arxiv.org/abs/1905.04132.
+# More details: https://github.com/vislearn/ngransac
 # Code adapted from https://github.com/vislearn/ngransac/blob/master/network.py
 
 class InlierNet(torch.nn.Module):
@@ -12,7 +13,8 @@ class InlierNet(torch.nn.Module):
 
         self.res_blocks = []
         self.bn_momentum = 0.1
-        self.p_in = torch.nn.Sequential(torch.nn.Conv2d(5, 128, 1, 1, 0, bias=False), torch.nn.BatchNorm2d(128, momentum=0.9))
+        self.p_in = torch.nn.Sequential(torch.nn.Conv2d(5, 128, 1, 1, 0, bias=False),
+                                        torch.nn.BatchNorm2d(128, momentum=0.9))
         for i in range(0, blocks):
             self.res_blocks.append((
                 torch.nn.Conv2d(128, 128, 1, 1, 0),
@@ -32,9 +34,6 @@ class InlierNet(torch.nn.Module):
         self.p_out = torch.nn.Conv2d(128, 1, 1, 1, 0)
 
     def forward(self, inputs):
-        batch_size = inputs.size(0)
-        data_size = inputs.size(2) # number of correspondences
-
         x = inputs
         x = F.relu(self.p_in(x))
 

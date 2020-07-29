@@ -44,15 +44,13 @@ def compute_repeatability(data, keep_k_points=300, distance_thresh=3):
         Keypoint localization error.
     """
     def filter_keypoints(points, shape):
-        """ Keep only the points whose coordinates are
-        inside the dimensions of shape. """
+        """ Keep only the points whose coordinates are inside the dimensions of shape. """
         mask = (points[:, 0] >= 0) & (points[:, 0] < shape[0]) &\
                (points[:, 1] >= 0) & (points[:, 1] < shape[1])
         return points[mask, :]
 
     def keep_true_keypoints(points, H, shape):
-        """ Keep only the points whose warped coordinates by H
-        are still inside shape. """
+        """ Keep only the points whose warped coordinates by H are still inside shape. """
         warped_points = warp_keypoints(points[:, [1, 0]], H)
         warped_points[:, [0, 1]] = warped_points[:, [1, 0]]
         mask = (warped_points[:, 0] >= 0) & (warped_points[:, 0] < shape[0]) &\
@@ -61,8 +59,8 @@ def compute_repeatability(data, keep_k_points=300, distance_thresh=3):
 
 
     def select_k_best(points, k):
-        """ Select the k most probable points (and strip their proba).
-        points has shape (num_points, 3) where the last coordinate is the proba. """
+        """ Select the k most probable points (and strip their probability).
+        points has shape (num_points, 3) where the last coordinate is the probability. """
         sorted_prob = points[points[:, 2].argsort(), :2]
         start = min(k, points.shape[0])
         return sorted_prob[-start:, :]

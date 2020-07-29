@@ -14,9 +14,9 @@ class PatchesDataset(Dataset):
     def __init__(self, root_dir, use_color=True, data_transform=None, output_shape=None, type='all'):
         """
         HPatches dataset class.
-        # Note: output_shape = (output_width, output_height)
-        # Note: this returns Pytorch tensors, resized to output_shape (if specified)
-        # Note: the homography will be adjusted according to output_shape.
+        Note: output_shape = (output_width, output_height)
+        Note: this returns Pytorch tensors, resized to output_shape (if specified)
+        Note: the homography will be adjusted according to output_shape.
 
         Parameters
         ----------
@@ -58,7 +58,8 @@ class PatchesDataset(Dataset):
                 homographies.append(np.loadtxt(str(Path(path, "H_1_" + str(i)))))
         self.files = {'image_paths': image_paths, 'warped_image_paths': warped_image_paths, 'homography': homographies}
 
-    def scale_homography(self, homography, original_scale, new_scale, pre):
+    @staticmethod
+    def scale_homography(homography, original_scale, new_scale, pre):
         scales = np.divide(new_scale, original_scale)
         if pre:
             s = np.diag(np.append(scales, 1.))
