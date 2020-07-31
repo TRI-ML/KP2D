@@ -1,0 +1,405 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>Neural Outlier Rejection for Self-Supervised Keypoint Learning &mdash; PackNet-SfM 1.0 documentation</title>
+  
+
+  
+  
+  
+  
+
+  
+  <script type="text/javascript" src="_static/js/modernizr.min.js"></script>
+  
+    
+      <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+        <script src="_static/jquery.js"></script>
+        <script src="_static/underscore.js"></script>
+        <script src="_static/doctools.js"></script>
+        <script src="_static/language_data.js"></script>
+    
+    <script type="text/javascript" src="_static/js/theme.js"></script>
+
+    
+
+  
+  <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
+  <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+  <link rel="stylesheet" href="_static/custom.css" type="text/css" />
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" /> 
+</head>
+
+<body class="wy-body-for-nav">
+
+   
+  <div class="wy-grid-for-nav">
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+          
+
+          
+            <a href="index.html">
+          
+
+          
+            
+            <img src="_static/logo.png" class="logo" alt="Logo"/>
+          
+          </a>
+
+          
+            
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+              
+            
+            
+              <p class="caption"><span class="caption-text">Contents</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="datasets/datasets.html">datasets</a></li>
+<li class="toctree-l1"><a class="reference internal" href="evaluation/evaluation.html">evaluation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="networks/networks.html">networks</a></li>
+<li class="toctree-l1"><a class="reference internal" href="utils/utils.html">utils</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Contact</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference external" href="https://tri.global">Toyota Research Institute</a></li>
+<li class="toctree-l1"><a class="reference external" href="https://github.com/TRI-ML/KP2D">KP2D GitHub</a></li>
+</ul>
+
+            
+          
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" aria-label="top navigation">
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">PackNet-SfM</a>
+        
+      </nav>
+
+
+      <div class="wy-nav-content">
+        
+        <div class="rst-content">
+        
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+
+  <ul class="wy-breadcrumbs">
+    
+      <li><a href="index.html">Docs</a> &raquo;</li>
+        
+      <li>Neural Outlier Rejection for Self-Supervised Keypoint Learning</li>
+    
+    
+      <li class="wy-breadcrumbs-aside">
+        
+            
+            <a href="_sources/README.rst.txt" rel="nofollow"> View page source</a>
+          
+        
+      </li>
+    
+  </ul>
+
+  
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <div class="section" id="neural-outlier-rejection-for-self-supervised-keypoint-learning">
+<h1>Neural Outlier Rejection for Self-Supervised Keypoint Learning</h1>
+<div class="section" id="overview">
+<h2>Overview</h2>
+<p><strong>IO-Net:</strong> A novel proxy task for the self-supervision of
+keypoint description.</p>
+<p><strong>KeyPointNet:</strong> An improved keypoint-network
+architecture that is especially amenable to robust keypoint detection
+and description.</p>
+<p><a class="reference external" href="https://openreview.net/pdf?id=Skx82ySYPH">**[Full paper]**</a></p>
+</div>
+<div class="section" id="inference-and-evaluation">
+<h2>Inference and evaluation</h2>
+<div class="section" id="setting-up-your-environment">
+<h3>Setting up your environment</h3>
+<p>You need a machine with recent Nvidia drivers and a GPU. We recommend
+using docker (see
+<a class="reference external" href="https://github.com/NVIDIA/nvidia-docker">nvidia-docker2</a>
+instructions) to have a reproducible environment. To setup your
+environment, type in a terminal (only tested in Ubuntu 18.04):</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>git clone https://github.com/TRI-ML/KP2D.git
+<span class="nb">cd</span> KP2D
+<span class="c1"># if you want to use docker (recommended)</span>
+make docker-build
+</pre></div>
+</div>
+<p>We will list below all commands as if run directly inside our container.
+To run any of the commands in a container, you can either start the
+container in interactive mode with <code class="docutils literal notranslate"><span class="pre">make</span> <span class="pre">docker-start</span></code> to land in a
+shell where you can type those commands, or you can do it in one step:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>make docker-run <span class="nv">COMMAND</span><span class="o">=</span><span class="s2">&quot;some-command&quot;</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="data">
+<h3>Data</h3>
+<p>Download HPatches data:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="nb">cd</span> /data/datasets/kp2d/
+wget http://icvl.ee.ic.ac.uk/vbalnt/hpatches/hpatches-sequences-release.tar.gz
+tar -xvf hpatches-sequences-release.tar.gz
+mv hpatches-release HPatches
+</pre></div>
+</div>
+</div>
+<div class="section" id="pre-trained-models">
+<h3>Pre-trained models:</h3>
+<p>Download the pre-trained models from
+<a class="reference external" href="https://tri-ml-public.s3.amazonaws.com/github/kp2d/models/pretrained_models.tar.gz">here</a>
+and place them in <code class="docutils literal notranslate"><span class="pre">/data/models/kp2d/</span></code></p>
+<p>To evaluate any of the models, simply run:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>make docker-run <span class="nv">COMMAND</span><span class="o">=</span><span class="s2">&quot;python scripts/eval_keypoint_net.py --pretrained_model /data/models/kp2d/v4.ckpt --input /data/datasets/kp2d/HPatches/&quot;</span>
+</pre></div>
+</div>
+<p>Evaluation for <strong>(320, 240)</strong>:</p>
+<table class="docutils align-default">
+<colgroup>
+<col style="width: 11%" />
+<col style="width: 23%" />
+<col style="width: 22%" />
+<col style="width: 11%" />
+<col style="width: 11%" />
+<col style="width: 11%" />
+<col style="width: 12%" />
+</colgroup>
+<thead>
+<tr class="row-odd"><th class="head"><p>Model</p></th>
+<th class="head"><p>Repeatability</p></th>
+<th class="head"><p>Localization</p></th>
+<th class="head"><p>C1</p></th>
+<th class="head"><p>C3</p></th>
+<th class="head"><p>C5</p></th>
+<th class="head"><p>MScore</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>V0*</p></td>
+<td><p>0.644</p></td>
+<td><p>1.087</p></td>
+<td><p>0.459</p></td>
+<td><p>0.816</p></td>
+<td><p>0.888</p></td>
+<td><p>0.518</p></td>
+</tr>
+<tr class="row-odd"><td><p>V1*</p></td>
+<td><p>0.678</p></td>
+<td><p>0.980</p></td>
+<td><p>0.453</p></td>
+<td><p>0.828</p></td>
+<td><p>0.905</p></td>
+<td><p>0.552</p></td>
+</tr>
+<tr class="row-even"><td><p>V2*</p></td>
+<td><p>0.679</p></td>
+<td><p>0.942</p></td>
+<td><p>0.534</p></td>
+<td><p>0.860</p></td>
+<td><p>0.914</p></td>
+<td><p>0.573</p></td>
+</tr>
+<tr class="row-odd"><td><p>V3</p></td>
+<td><p>0.685</p></td>
+<td><p>0.885</p></td>
+<td><p>0.602</p></td>
+<td><p>0.836</p></td>
+<td><p>0.886</p></td>
+<td><p>0.520</p></td>
+</tr>
+<tr class="row-even"><td><p>V4</p></td>
+<td><p>0.687</p></td>
+<td><p>0.892</p></td>
+<td><p>0.593</p></td>
+<td><p>0.867</p></td>
+<td><p>0.910</p></td>
+<td><p>0.546</p></td>
+</tr>
+</tbody>
+</table>
+<p>Evaluation for <strong>(640, 480)</strong>:</p>
+<table class="docutils align-default">
+<colgroup>
+<col style="width: 11%" />
+<col style="width: 23%" />
+<col style="width: 22%" />
+<col style="width: 11%" />
+<col style="width: 11%" />
+<col style="width: 11%" />
+<col style="width: 12%" />
+</colgroup>
+<thead>
+<tr class="row-odd"><th class="head"><p>Model</p></th>
+<th class="head"><p>Repeatability</p></th>
+<th class="head"><p>Localization</p></th>
+<th class="head"><p>C1</p></th>
+<th class="head"><p>C3</p></th>
+<th class="head"><p>C5</p></th>
+<th class="head"><p>MScore</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>V0*</p></td>
+<td><p>0.633</p></td>
+<td><p>1.157</p></td>
+<td><p>0.45</p></td>
+<td><p>0.810</p></td>
+<td><p>0.890</p></td>
+<td><p>0.486</p></td>
+</tr>
+<tr class="row-odd"><td><p>V1*</p></td>
+<td><p>0.673</p></td>
+<td><p>1.049</p></td>
+<td><p>0.464</p></td>
+<td><p>0.817</p></td>
+<td><p>0.895</p></td>
+<td><p>0.519</p></td>
+</tr>
+<tr class="row-even"><td><p>V2*</p></td>
+<td><p>0.68</p></td>
+<td><p>1.008</p></td>
+<td><p>0.510</p></td>
+<td><p>0.855</p></td>
+<td><p>0.921</p></td>
+<td><p>0.544</p></td>
+</tr>
+<tr class="row-odd"><td><p>V3</p></td>
+<td><p>0.682</p></td>
+<td><p>0.972</p></td>
+<td><p>0.550</p></td>
+<td><p>0.812</p></td>
+<td><p>0.883</p></td>
+<td><p>0.486</p></td>
+</tr>
+<tr class="row-even"><td><p>V4</p></td>
+<td><p>0.684</p></td>
+<td><p>0.972</p></td>
+<td><p>0.566</p></td>
+<td><p>0.84</p></td>
+<td><p>0.900</p></td>
+<td><p>0.511</p></td>
+</tr>
+</tbody>
+</table>
+<p>* - these models were trained again after submission - the numbers
+deviate slightly from the paper, however the same trends can be
+observed.</p>
+</div>
+</div>
+<div class="section" id="license">
+<h2>License</h2>
+<p>The source code is released under the <a class="reference external" href="LICENSE.md">MIT license</a>.</p>
+</div>
+<div class="section" id="citation">
+<h2>Citation</h2>
+<p>Please use the following citation when referencing our work:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="nd">@inproceedings</span><span class="p">{</span>
+<span class="n">tang2020neural</span><span class="p">,</span>
+<span class="n">title</span><span class="o">=</span><span class="p">{</span><span class="n">Neural</span> <span class="n">Outlier</span> <span class="n">Rejection</span> <span class="k">for</span> <span class="n">Self</span><span class="o">-</span><span class="n">Supervised</span> <span class="n">Keypoint</span> <span class="n">Learning</span><span class="p">},</span>
+<span class="n">author</span><span class="o">=</span><span class="p">{</span><span class="n">Jiexiong</span> <span class="n">Tang</span> <span class="ow">and</span> <span class="n">Hanme</span> <span class="n">Kim</span> <span class="ow">and</span> <span class="n">Vitor</span> <span class="n">Guizilini</span> <span class="ow">and</span> <span class="n">Sudeep</span> <span class="n">Pillai</span> <span class="ow">and</span> <span class="n">Rares</span> <span class="n">Ambrus</span><span class="p">},</span>
+<span class="n">booktitle</span><span class="o">=</span><span class="p">{</span><span class="n">International</span> <span class="n">Conference</span> <span class="n">on</span> <span class="n">Learning</span> <span class="n">Representations</span><span class="p">},</span>
+<span class="n">year</span><span class="o">=</span><span class="p">{</span><span class="mi">2020</span><span class="p">}</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+</div>
+</div>
+
+
+           </div>
+           
+          </div>
+          <footer>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2020, Toyota Research Institute (TRI)
+
+    </p>
+  </div>
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/rtfd/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(false);
+      });
+  </script>
+
+  
+  
+    
+   
+
+</body>
+</html>

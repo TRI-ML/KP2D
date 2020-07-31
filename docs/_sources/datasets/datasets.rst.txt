@@ -1,0 +1,5 @@
+datasets
+========
+
+.. toctree::
+   datasets.patches_dataset

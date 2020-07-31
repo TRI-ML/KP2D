@@ -1,0 +1,7 @@
+patches_dataset
+===============
+
+.. automodule:: kp2d.datasets.patches_dataset
+   :members:
+   :undoc-members:
+   :show-inheritance:
