@@ -1,0 +1,452 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>kp2d.evaluation.descriptor_evaluation &mdash; PackNet-SfM 1.0 documentation</title>
+  
+
+  
+  
+  
+  
+
+  
+  <script type="text/javascript" src="../../../_static/js/modernizr.min.js"></script>
+  
+    
+      <script type="text/javascript" id="documentation_options" data-url_root="../../../" src="../../../_static/documentation_options.js"></script>
+        <script src="../../../_static/jquery.js"></script>
+        <script src="../../../_static/underscore.js"></script>
+        <script src="../../../_static/doctools.js"></script>
+        <script src="../../../_static/language_data.js"></script>
+    
+    <script type="text/javascript" src="../../../_static/js/theme.js"></script>
+
+    
+
+  
+  <link rel="stylesheet" href="../../../_static/css/theme.css" type="text/css" />
+  <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
+  <link rel="stylesheet" href="../../../_static/custom.css" type="text/css" />
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav">
+
+   
+  <div class="wy-grid-for-nav">
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+          
+
+          
+            <a href="../../../index.html">
+          
+
+          
+            
+            <img src="../../../_static/logo.png" class="logo" alt="Logo"/>
+          
+          </a>
+
+          
+            
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+              
+            
+            
+              <p class="caption"><span class="caption-text">Contents</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../datasets/datasets.html">datasets</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../evaluation/evaluation.html">evaluation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../networks/networks.html">networks</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../utils/utils.html">utils</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Contact</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference external" href="https://tri.global">Toyota Research Institute</a></li>
+<li class="toctree-l1"><a class="reference external" href="https://github.com/TRI-ML/KP2D">KP2D GitHub</a></li>
+</ul>
+
+            
+          
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" aria-label="top navigation">
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../index.html">PackNet-SfM</a>
+        
+      </nav>
+
+
+      <div class="wy-nav-content">
+        
+        <div class="rst-content">
+        
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+
+  <ul class="wy-breadcrumbs">
+    
+      <li><a href="../../../index.html">Docs</a> &raquo;</li>
+        
+          <li><a href="../../index.html">Module code</a> &raquo;</li>
+        
+      <li>kp2d.evaluation.descriptor_evaluation</li>
+    
+    
+      <li class="wy-breadcrumbs-aside">
+        
+      </li>
+    
+  </ul>
+
+  
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <h1>Source code for kp2d.evaluation.descriptor_evaluation</h1><div class="highlight"><pre>
+<span></span><span class="c1"># Copyright 2020 Toyota Research Institute.  All rights reserved.</span>
+<span class="c1"># Adapted from: https://github.com/rpautrat/SuperPoint/blob/master/superpoint/evaluations/descriptor_evaluation.py</span>
+
+<span class="kn">import</span> <span class="nn">random</span>
+<span class="kn">from</span> <span class="nn">glob</span> <span class="k">import</span> <span class="n">glob</span>
+<span class="kn">from</span> <span class="nn">os</span> <span class="k">import</span> <span class="n">path</span> <span class="k">as</span> <span class="n">osp</span>
+
+<span class="kn">import</span> <span class="nn">cv2</span>
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+
+<span class="kn">from</span> <span class="nn">kp2d.utils.keypoints</span> <span class="k">import</span> <span class="n">warp_keypoints</span>
+
+
+<div class="viewcode-block" id="select_k_best"><a class="viewcode-back" href="../../../evaluation/evaluation.descriptor_evaluation.html#kp2d.evaluation.descriptor_evaluation.select_k_best">[docs]</a><span class="k">def</span> <span class="nf">select_k_best</span><span class="p">(</span><span class="n">points</span><span class="p">,</span> <span class="n">descriptors</span><span class="p">,</span> <span class="n">k</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot; Select the k most probable points (and strip their proba).</span>
+<span class="sd">    points has shape (num_points, 3) where the last coordinate is the proba. </span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    points: numpy.ndarray (N,3)</span>
+<span class="sd">        Keypoint vector, consisting of (x,y,probability).</span>
+<span class="sd">    descriptors: numpy.ndarray (N,256)</span>
+<span class="sd">        Keypoint descriptors.</span>
+<span class="sd">    k: int</span>
+<span class="sd">        Number of keypoints to select, based on probability.</span>
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    </span>
+<span class="sd">    selected_points: numpy.ndarray (k,2)</span>
+<span class="sd">        k most probably keypoints.</span>
+<span class="sd">    selected_descriptors: numpy.ndarray (k,256)</span>
+<span class="sd">        Descriptors corresponding to the k most probable keypoints.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">sorted_prob</span> <span class="o">=</span> <span class="n">points</span><span class="p">[</span><span class="n">points</span><span class="p">[:,</span> <span class="mi">2</span><span class="p">]</span><span class="o">.</span><span class="n">argsort</span><span class="p">(),</span> <span class="p">:</span><span class="mi">2</span><span class="p">]</span>
+    <span class="n">sorted_desc</span> <span class="o">=</span> <span class="n">descriptors</span><span class="p">[</span><span class="n">points</span><span class="p">[:,</span> <span class="mi">2</span><span class="p">]</span><span class="o">.</span><span class="n">argsort</span><span class="p">(),</span> <span class="p">:]</span>
+    <span class="n">start</span> <span class="o">=</span> <span class="nb">min</span><span class="p">(</span><span class="n">k</span><span class="p">,</span> <span class="n">points</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+    <span class="n">selected_points</span> <span class="o">=</span> <span class="n">sorted_prob</span><span class="p">[</span><span class="o">-</span><span class="n">start</span><span class="p">:,</span> <span class="p">:]</span>
+    <span class="n">selected_descriptors</span> <span class="o">=</span> <span class="n">sorted_desc</span><span class="p">[</span><span class="o">-</span><span class="n">start</span><span class="p">:,</span> <span class="p">:]</span>
+    <span class="k">return</span> <span class="n">selected_points</span><span class="p">,</span> <span class="n">selected_descriptors</span></div>
+
+
+<div class="viewcode-block" id="keep_shared_points"><a class="viewcode-back" href="../../../evaluation/evaluation.descriptor_evaluation.html#kp2d.evaluation.descriptor_evaluation.keep_shared_points">[docs]</a><span class="k">def</span> <span class="nf">keep_shared_points</span><span class="p">(</span><span class="n">keypoints</span><span class="p">,</span> <span class="n">descriptors</span><span class="p">,</span> <span class="n">H</span><span class="p">,</span> <span class="n">shape</span><span class="p">,</span> <span class="n">keep_k_points</span><span class="o">=</span><span class="mi">1000</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Compute a list of keypoints from the map, filter the list of points by keeping</span>
+<span class="sd">    only the points that once mapped by H are still inside the shape of the map</span>
+<span class="sd">    and keep at most &#39;keep_k_points&#39; keypoints in the image.</span>
+<span class="sd">    </span>
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    keypoints: numpy.ndarray (N,3)</span>
+<span class="sd">        Keypoint vector, consisting of (x,y,probability).</span>
+<span class="sd">    descriptors: numpy.ndarray (N,256)</span>
+<span class="sd">        Keypoint descriptors.</span>
+<span class="sd">    H: numpy.ndarray (3,3)</span>
+<span class="sd">        Homography.</span>
+<span class="sd">    shape: tuple </span>
+<span class="sd">        Image shape.</span>
+<span class="sd">    keep_k_points: int</span>
+<span class="sd">        Number of keypoints to select, based on probability.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------    </span>
+<span class="sd">    selected_points: numpy.ndarray (k,2)</span>
+<span class="sd">        k most probably keypoints.</span>
+<span class="sd">    selected_descriptors: numpy.ndarray (k,256)</span>
+<span class="sd">        Descriptors corresponding to the k most probable keypoints.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    
+    <span class="k">def</span> <span class="nf">keep_true_keypoints</span><span class="p">(</span><span class="n">points</span><span class="p">,</span> <span class="n">descriptors</span><span class="p">,</span> <span class="n">H</span><span class="p">,</span> <span class="n">shape</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; Keep only the points whose warped coordinates by H</span>
+<span class="sd">        are still inside shape. &quot;&quot;&quot;</span>
+        <span class="n">warped_points</span> <span class="o">=</span> <span class="n">warp_keypoints</span><span class="p">(</span><span class="n">points</span><span class="p">[:,</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">]],</span> <span class="n">H</span><span class="p">)</span>
+        <span class="n">warped_points</span><span class="p">[:,</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">]]</span> <span class="o">=</span> <span class="n">warped_points</span><span class="p">[:,</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">]]</span>
+        <span class="n">mask</span> <span class="o">=</span> <span class="p">(</span><span class="n">warped_points</span><span class="p">[:,</span> <span class="mi">0</span><span class="p">]</span> <span class="o">&gt;=</span> <span class="mi">0</span><span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">warped_points</span><span class="p">[:,</span> <span class="mi">0</span><span class="p">]</span> <span class="o">&lt;</span> <span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span> <span class="o">&amp;</span>\
+               <span class="p">(</span><span class="n">warped_points</span><span class="p">[:,</span> <span class="mi">1</span><span class="p">]</span> <span class="o">&gt;=</span> <span class="mi">0</span><span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">warped_points</span><span class="p">[:,</span> <span class="mi">1</span><span class="p">]</span> <span class="o">&lt;</span> <span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span>
+        <span class="k">return</span> <span class="n">points</span><span class="p">[</span><span class="n">mask</span><span class="p">,</span> <span class="p">:],</span> <span class="n">descriptors</span><span class="p">[</span><span class="n">mask</span><span class="p">,</span> <span class="p">:]</span>
+
+    <span class="n">selected_keypoints</span><span class="p">,</span> <span class="n">selected_descriptors</span> <span class="o">=</span> <span class="n">keep_true_keypoints</span><span class="p">(</span><span class="n">keypoints</span><span class="p">,</span> <span class="n">descriptors</span><span class="p">,</span> <span class="n">H</span><span class="p">,</span> <span class="n">shape</span><span class="p">)</span>
+    <span class="n">selected_keypoints</span><span class="p">,</span> <span class="n">selected_descriptors</span> <span class="o">=</span> <span class="n">select_k_best</span><span class="p">(</span><span class="n">selected_keypoints</span><span class="p">,</span> <span class="n">selected_descriptors</span><span class="p">,</span> <span class="n">keep_k_points</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">selected_keypoints</span><span class="p">,</span> <span class="n">selected_descriptors</span></div>
+
+
+<div class="viewcode-block" id="compute_matching_score"><a class="viewcode-back" href="../../../evaluation/evaluation.descriptor_evaluation.html#kp2d.evaluation.descriptor_evaluation.compute_matching_score">[docs]</a><span class="k">def</span> <span class="nf">compute_matching_score</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="n">keep_k_points</span><span class="o">=</span><span class="mi">1000</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Compute the matching score between two sets of keypoints with associated descriptors.</span>
+<span class="sd">    </span>
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    data: dict</span>
+<span class="sd">        Input dictionary containing:</span>
+<span class="sd">        image_shape: tuple (H,W)</span>
+<span class="sd">            Original image shape.</span>
+<span class="sd">        homography: numpy.ndarray (3,3)</span>
+<span class="sd">            Ground truth homography.</span>
+<span class="sd">        prob: numpy.ndarray (N,3)</span>
+<span class="sd">            Keypoint vector, consisting of (x,y,probability).</span>
+<span class="sd">        warped_prob: numpy.ndarray (N,3)</span>
+<span class="sd">            Warped keypoint vector, consisting of (x,y,probability).</span>
+<span class="sd">        desc: numpy.ndarray (N,256)</span>
+<span class="sd">            Keypoint descriptors.</span>
+<span class="sd">        warped_desc: numpy.ndarray (N,256)</span>
+<span class="sd">            Warped keypoint descriptors.</span>
+<span class="sd">    keep_k_points: int</span>
+<span class="sd">        Number of keypoints to select, based on probability.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------    </span>
+<span class="sd">    ms: float</span>
+<span class="sd">        Matching score.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">shape</span> <span class="o">=</span> <span class="n">data</span><span class="p">[</span><span class="s1">&#39;image_shape&#39;</span><span class="p">]</span>
+    <span class="n">real_H</span> <span class="o">=</span> <span class="n">data</span><span class="p">[</span><span class="s1">&#39;homography&#39;</span><span class="p">]</span>
+
+    <span class="c1"># # Filter out predictions</span>
+    <span class="n">keypoints</span> <span class="o">=</span> <span class="n">data</span><span class="p">[</span><span class="s1">&#39;prob&#39;</span><span class="p">][:,</span> <span class="p">:</span><span class="mi">2</span><span class="p">]</span><span class="o">.</span><span class="n">T</span>
+    <span class="n">keypoints</span> <span class="o">=</span> <span class="n">keypoints</span><span class="p">[::</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+    <span class="n">prob</span> <span class="o">=</span> <span class="n">data</span><span class="p">[</span><span class="s1">&#39;prob&#39;</span><span class="p">][:,</span> <span class="mi">2</span><span class="p">]</span>
+    <span class="n">keypoints</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">stack</span><span class="p">([</span><span class="n">keypoints</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">keypoints</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="n">prob</span><span class="p">],</span> <span class="n">axis</span><span class="o">=-</span><span class="mi">1</span><span class="p">)</span>
+
+    <span class="n">warped_keypoints</span> <span class="o">=</span> <span class="n">data</span><span class="p">[</span><span class="s1">&#39;warped_prob&#39;</span><span class="p">][:,</span> <span class="p">:</span><span class="mi">2</span><span class="p">]</span><span class="o">.</span><span class="n">T</span>
+    <span class="n">warped_keypoints</span> <span class="o">=</span> <span class="n">warped_keypoints</span><span class="p">[::</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+    <span class="n">warped_prob</span> <span class="o">=</span> <span class="n">data</span><span class="p">[</span><span class="s1">&#39;warped_prob&#39;</span><span class="p">][:,</span> <span class="mi">2</span><span class="p">]</span>
+    <span class="n">warped_keypoints</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">stack</span><span class="p">([</span><span class="n">warped_keypoints</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">warped_keypoints</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="n">warped_prob</span><span class="p">],</span> <span class="n">axis</span><span class="o">=-</span><span class="mi">1</span><span class="p">)</span>
+
+    <span class="n">desc</span> <span class="o">=</span> <span class="n">data</span><span class="p">[</span><span class="s1">&#39;desc&#39;</span><span class="p">]</span>
+    <span class="n">warped_desc</span> <span class="o">=</span> <span class="n">data</span><span class="p">[</span><span class="s1">&#39;warped_desc&#39;</span><span class="p">]</span>
+    
+    <span class="c1"># Keeps all points for the next frame. The matching for caculating M.Score shouldnt use only in view points.</span>
+    <span class="n">keypoints</span><span class="p">,</span>        <span class="n">desc</span>        <span class="o">=</span> <span class="n">select_k_best</span><span class="p">(</span><span class="n">keypoints</span><span class="p">,</span>               <span class="n">desc</span><span class="p">,</span> <span class="n">keep_k_points</span><span class="p">)</span>
+    <span class="n">warped_keypoints</span><span class="p">,</span> <span class="n">warped_desc</span> <span class="o">=</span> <span class="n">select_k_best</span><span class="p">(</span><span class="n">warped_keypoints</span><span class="p">,</span> <span class="n">warped_desc</span><span class="p">,</span> <span class="n">keep_k_points</span><span class="p">)</span>
+    
+    <span class="c1"># Match the keypoints with the warped_keypoints with nearest neighbor search</span>
+    <span class="c1"># This part needs to be done with crossCheck=False.</span>
+    <span class="c1"># All the matched pairs need to be evaluated without any selection.</span>
+    <span class="n">bf</span> <span class="o">=</span> <span class="n">cv2</span><span class="o">.</span><span class="n">BFMatcher</span><span class="p">(</span><span class="n">cv2</span><span class="o">.</span><span class="n">NORM_L2</span><span class="p">,</span> <span class="n">crossCheck</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+
+    <span class="n">matches</span> <span class="o">=</span> <span class="n">bf</span><span class="o">.</span><span class="n">match</span><span class="p">(</span><span class="n">desc</span><span class="p">,</span> <span class="n">warped_desc</span><span class="p">)</span>
+    <span class="n">matches_idx</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">m</span><span class="o">.</span><span class="n">queryIdx</span> <span class="k">for</span> <span class="n">m</span> <span class="ow">in</span> <span class="n">matches</span><span class="p">])</span>
+    <span class="n">m_keypoints</span> <span class="o">=</span> <span class="n">keypoints</span><span class="p">[</span><span class="n">matches_idx</span><span class="p">,</span> <span class="p">:]</span>
+    <span class="n">matches_idx</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">m</span><span class="o">.</span><span class="n">trainIdx</span> <span class="k">for</span> <span class="n">m</span> <span class="ow">in</span> <span class="n">matches</span><span class="p">])</span>
+    <span class="n">m_warped_keypoints</span> <span class="o">=</span> <span class="n">warped_keypoints</span><span class="p">[</span><span class="n">matches_idx</span><span class="p">,</span> <span class="p">:]</span>
+
+    <span class="n">true_warped_keypoints</span> <span class="o">=</span> <span class="n">warp_keypoints</span><span class="p">(</span><span class="n">m_warped_keypoints</span><span class="p">[:,</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">]],</span> <span class="n">np</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">inv</span><span class="p">(</span><span class="n">real_H</span><span class="p">))[:,::</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+    <span class="n">vis_warped</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">all</span><span class="p">((</span><span class="n">true_warped_keypoints</span> <span class="o">&gt;=</span> <span class="mi">0</span><span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">true_warped_keypoints</span> <span class="o">&lt;=</span> <span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">shape</span><span class="p">)</span><span class="o">-</span><span class="mi">1</span><span class="p">)),</span> <span class="n">axis</span><span class="o">=-</span><span class="mi">1</span><span class="p">)</span>
+    <span class="n">norm1</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">norm</span><span class="p">(</span><span class="n">true_warped_keypoints</span> <span class="o">-</span> <span class="n">m_keypoints</span><span class="p">,</span> <span class="n">axis</span><span class="o">=-</span><span class="mi">1</span><span class="p">)</span>
+
+    <span class="n">correct1</span> <span class="o">=</span> <span class="p">(</span><span class="n">norm1</span> <span class="o">&lt;</span> <span class="mi">3</span><span class="p">)</span>
+    <span class="n">count1</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">correct1</span> <span class="o">*</span> <span class="n">vis_warped</span><span class="p">)</span>
+    <span class="n">score1</span> <span class="o">=</span> <span class="n">count1</span> <span class="o">/</span> <span class="n">np</span><span class="o">.</span><span class="n">maximum</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">vis_warped</span><span class="p">),</span> <span class="mf">1.0</span><span class="p">)</span>
+
+    <span class="n">matches</span> <span class="o">=</span> <span class="n">bf</span><span class="o">.</span><span class="n">match</span><span class="p">(</span><span class="n">warped_desc</span><span class="p">,</span> <span class="n">desc</span><span class="p">)</span>
+    <span class="n">matches_idx</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">m</span><span class="o">.</span><span class="n">queryIdx</span> <span class="k">for</span> <span class="n">m</span> <span class="ow">in</span> <span class="n">matches</span><span class="p">])</span>
+    <span class="n">m_warped_keypoints</span> <span class="o">=</span> <span class="n">warped_keypoints</span><span class="p">[</span><span class="n">matches_idx</span><span class="p">,</span> <span class="p">:]</span>
+    <span class="n">matches_idx</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">m</span><span class="o">.</span><span class="n">trainIdx</span> <span class="k">for</span> <span class="n">m</span> <span class="ow">in</span> <span class="n">matches</span><span class="p">])</span>
+    <span class="n">m_keypoints</span> <span class="o">=</span> <span class="n">keypoints</span><span class="p">[</span><span class="n">matches_idx</span><span class="p">,</span> <span class="p">:]</span>
+
+    <span class="n">true_keypoints</span> <span class="o">=</span> <span class="n">warp_keypoints</span><span class="p">(</span><span class="n">m_keypoints</span><span class="p">[:,</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">]],</span> <span class="n">real_H</span><span class="p">)[:,::</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+    <span class="n">vis</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">all</span><span class="p">((</span><span class="n">true_keypoints</span> <span class="o">&gt;=</span> <span class="mi">0</span><span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">true_keypoints</span> <span class="o">&lt;=</span> <span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">shape</span><span class="p">)</span><span class="o">-</span><span class="mi">1</span><span class="p">)),</span> <span class="n">axis</span><span class="o">=-</span><span class="mi">1</span><span class="p">)</span>
+    <span class="n">norm2</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">norm</span><span class="p">(</span><span class="n">true_keypoints</span> <span class="o">-</span> <span class="n">m_warped_keypoints</span><span class="p">,</span> <span class="n">axis</span><span class="o">=-</span><span class="mi">1</span><span class="p">)</span>
+
+    <span class="n">correct2</span> <span class="o">=</span> <span class="p">(</span><span class="n">norm2</span> <span class="o">&lt;</span> <span class="mi">3</span><span class="p">)</span>
+    <span class="n">count2</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">correct2</span> <span class="o">*</span> <span class="n">vis</span><span class="p">)</span>
+    <span class="n">score2</span> <span class="o">=</span> <span class="n">count2</span> <span class="o">/</span> <span class="n">np</span><span class="o">.</span><span class="n">maximum</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">vis</span><span class="p">),</span> <span class="mf">1.0</span><span class="p">)</span>
+
+    <span class="n">ms</span> <span class="o">=</span> <span class="p">(</span><span class="n">score1</span> <span class="o">+</span> <span class="n">score2</span><span class="p">)</span> <span class="o">/</span> <span class="mi">2</span>
+
+    <span class="k">return</span> <span class="n">ms</span></div>
+
+<div class="viewcode-block" id="compute_homography"><a class="viewcode-back" href="../../../evaluation/evaluation.descriptor_evaluation.html#kp2d.evaluation.descriptor_evaluation.compute_homography">[docs]</a><span class="k">def</span> <span class="nf">compute_homography</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="n">keep_k_points</span><span class="o">=</span><span class="mi">1000</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Compute the homography between 2 sets of Keypoints and descriptors inside data. </span>
+<span class="sd">    Use the homography to compute the correctness metrics (1,3,5).</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    data: dict</span>
+<span class="sd">        Input dictionary containing:</span>
+<span class="sd">        image_shape: tuple (H,W)</span>
+<span class="sd">            Original image shape.</span>
+<span class="sd">        homography: numpy.ndarray (3,3)</span>
+<span class="sd">            Ground truth homography.</span>
+<span class="sd">        prob: numpy.ndarray (N,3)</span>
+<span class="sd">            Keypoint vector, consisting of (x,y,probability).</span>
+<span class="sd">        warped_prob: numpy.ndarray (N,3)</span>
+<span class="sd">            Warped keypoint vector, consisting of (x,y,probability).</span>
+<span class="sd">        desc: numpy.ndarray (N,256)</span>
+<span class="sd">            Keypoint descriptors.</span>
+<span class="sd">        warped_desc: numpy.ndarray (N,256)</span>
+<span class="sd">            Warped keypoint descriptors.</span>
+<span class="sd">    keep_k_points: int</span>
+<span class="sd">        Number of keypoints to select, based on probability.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------    </span>
+<span class="sd">    correctness1: float</span>
+<span class="sd">        correctness1 metric.</span>
+<span class="sd">    correctness3: float</span>
+<span class="sd">        correctness3 metric.</span>
+<span class="sd">    correctness5: float</span>
+<span class="sd">        correctness5 metric.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">shape</span> <span class="o">=</span> <span class="n">data</span><span class="p">[</span><span class="s1">&#39;image_shape&#39;</span><span class="p">]</span>
+    <span class="n">real_H</span> <span class="o">=</span> <span class="n">data</span><span class="p">[</span><span class="s1">&#39;homography&#39;</span><span class="p">]</span>
+
+    <span class="c1"># # Filter out predictions</span>
+    <span class="n">keypoints</span> <span class="o">=</span> <span class="n">data</span><span class="p">[</span><span class="s1">&#39;prob&#39;</span><span class="p">][:,</span> <span class="p">:</span><span class="mi">2</span><span class="p">]</span><span class="o">.</span><span class="n">T</span>
+    <span class="n">keypoints</span> <span class="o">=</span> <span class="n">keypoints</span><span class="p">[::</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+    <span class="n">prob</span> <span class="o">=</span> <span class="n">data</span><span class="p">[</span><span class="s1">&#39;prob&#39;</span><span class="p">][:,</span> <span class="mi">2</span><span class="p">]</span>
+    <span class="n">keypoints</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">stack</span><span class="p">([</span><span class="n">keypoints</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">keypoints</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="n">prob</span><span class="p">],</span> <span class="n">axis</span><span class="o">=-</span><span class="mi">1</span><span class="p">)</span>
+
+    <span class="n">warped_keypoints</span> <span class="o">=</span> <span class="n">data</span><span class="p">[</span><span class="s1">&#39;warped_prob&#39;</span><span class="p">][:,</span> <span class="p">:</span><span class="mi">2</span><span class="p">]</span><span class="o">.</span><span class="n">T</span>
+    <span class="n">warped_keypoints</span> <span class="o">=</span> <span class="n">warped_keypoints</span><span class="p">[::</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+    <span class="n">warped_prob</span> <span class="o">=</span> <span class="n">data</span><span class="p">[</span><span class="s1">&#39;warped_prob&#39;</span><span class="p">][:,</span> <span class="mi">2</span><span class="p">]</span>
+    <span class="n">warped_keypoints</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">stack</span><span class="p">([</span><span class="n">warped_keypoints</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">warped_keypoints</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="n">warped_prob</span><span class="p">],</span> <span class="n">axis</span><span class="o">=-</span><span class="mi">1</span><span class="p">)</span>
+
+    <span class="n">desc</span> <span class="o">=</span> <span class="n">data</span><span class="p">[</span><span class="s1">&#39;desc&#39;</span><span class="p">]</span>
+    <span class="n">warped_desc</span> <span class="o">=</span> <span class="n">data</span><span class="p">[</span><span class="s1">&#39;warped_desc&#39;</span><span class="p">]</span>
+    
+    <span class="c1"># Keeps only the points shared between the two views</span>
+    <span class="n">keypoints</span><span class="p">,</span> <span class="n">desc</span> <span class="o">=</span> <span class="n">keep_shared_points</span><span class="p">(</span><span class="n">keypoints</span><span class="p">,</span> <span class="n">desc</span><span class="p">,</span> <span class="n">real_H</span><span class="p">,</span> <span class="n">shape</span><span class="p">,</span> <span class="n">keep_k_points</span><span class="p">)</span>
+    <span class="n">warped_keypoints</span><span class="p">,</span> <span class="n">warped_desc</span> <span class="o">=</span> <span class="n">keep_shared_points</span><span class="p">(</span><span class="n">warped_keypoints</span><span class="p">,</span> <span class="n">warped_desc</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">inv</span><span class="p">(</span><span class="n">real_H</span><span class="p">),</span> <span class="n">shape</span><span class="p">,</span>
+                                                       <span class="n">keep_k_points</span><span class="p">)</span>
+
+    <span class="n">bf</span> <span class="o">=</span> <span class="n">cv2</span><span class="o">.</span><span class="n">BFMatcher</span><span class="p">(</span><span class="n">cv2</span><span class="o">.</span><span class="n">NORM_L2</span><span class="p">,</span> <span class="n">crossCheck</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="n">matches</span> <span class="o">=</span> <span class="n">bf</span><span class="o">.</span><span class="n">match</span><span class="p">(</span><span class="n">desc</span><span class="p">,</span> <span class="n">warped_desc</span><span class="p">)</span>
+    <span class="n">matches_idx</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">m</span><span class="o">.</span><span class="n">queryIdx</span> <span class="k">for</span> <span class="n">m</span> <span class="ow">in</span> <span class="n">matches</span><span class="p">])</span>
+    <span class="n">m_keypoints</span> <span class="o">=</span> <span class="n">keypoints</span><span class="p">[</span><span class="n">matches_idx</span><span class="p">,</span> <span class="p">:]</span>
+    <span class="n">matches_idx</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">m</span><span class="o">.</span><span class="n">trainIdx</span> <span class="k">for</span> <span class="n">m</span> <span class="ow">in</span> <span class="n">matches</span><span class="p">])</span>
+    <span class="n">m_warped_keypoints</span> <span class="o">=</span> <span class="n">warped_keypoints</span><span class="p">[</span><span class="n">matches_idx</span><span class="p">,</span> <span class="p">:]</span>
+
+    <span class="c1"># Estimate the homography between the matches using RANSAC</span>
+    <span class="n">H</span><span class="p">,</span> <span class="n">inliers</span> <span class="o">=</span> <span class="n">cv2</span><span class="o">.</span><span class="n">findHomography</span><span class="p">(</span><span class="n">m_keypoints</span><span class="p">[:,</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">]],</span> <span class="n">m_warped_keypoints</span><span class="p">[:,</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">]],</span> <span class="n">cv2</span><span class="o">.</span><span class="n">RANSAC</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="n">maxIters</span><span class="o">=</span><span class="mi">5000</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">H</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">return</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span>
+
+    <span class="n">inliers</span> <span class="o">=</span> <span class="n">inliers</span><span class="o">.</span><span class="n">flatten</span><span class="p">()</span>
+    <span class="n">shape</span> <span class="o">=</span> <span class="n">shape</span><span class="p">[::</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+
+    <span class="c1"># Compute correctness</span>
+    <span class="n">corners</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">],</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">-</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">],</span> <span class="p">[</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">-</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">],</span> <span class="p">[</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">-</span> <span class="mi">1</span><span class="p">,</span> <span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">-</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">]])</span>
+    <span class="n">real_warped_corners</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="n">corners</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">transpose</span><span class="p">(</span><span class="n">real_H</span><span class="p">))</span>
+    <span class="n">real_warped_corners</span> <span class="o">=</span> <span class="n">real_warped_corners</span><span class="p">[:,</span> <span class="p">:</span><span class="mi">2</span><span class="p">]</span> <span class="o">/</span> <span class="n">real_warped_corners</span><span class="p">[:,</span> <span class="mi">2</span><span class="p">:]</span>
+    <span class="n">warped_corners</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="n">corners</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">transpose</span><span class="p">(</span><span class="n">H</span><span class="p">))</span>
+    <span class="n">warped_corners</span> <span class="o">=</span> <span class="n">warped_corners</span><span class="p">[:,</span> <span class="p">:</span><span class="mi">2</span><span class="p">]</span> <span class="o">/</span> <span class="n">warped_corners</span><span class="p">[:,</span> <span class="mi">2</span><span class="p">:]</span>
+    
+    <span class="n">mean_dist</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">norm</span><span class="p">(</span><span class="n">real_warped_corners</span> <span class="o">-</span> <span class="n">warped_corners</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">))</span>
+    <span class="n">correctness1</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">mean_dist</span> <span class="o">&lt;=</span> <span class="mi">1</span><span class="p">)</span>
+    <span class="n">correctness3</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">mean_dist</span> <span class="o">&lt;=</span> <span class="mi">3</span><span class="p">)</span>
+    <span class="n">correctness5</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">mean_dist</span> <span class="o">&lt;=</span> <span class="mi">5</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">correctness1</span><span class="p">,</span> <span class="n">correctness3</span><span class="p">,</span> <span class="n">correctness5</span></div>
+</pre></div>
+
+           </div>
+           
+          </div>
+          <footer>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2020, Toyota Research Institute (TRI)
+
+    </p>
+  </div>
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/rtfd/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(false);
+      });
+  </script>
+
+  
+  
+    
+   
+
+</body>
+</html>
