@@ -3,12 +3,8 @@
 import os
 from math import pi
 
-import cv2
-import numpy as np
 import torch
 import torch.nn.functional as F
-import torchvision
-from matplotlib.cm import get_cmap
 from PIL import Image
 
 from kp2d.utils.image import image_grid

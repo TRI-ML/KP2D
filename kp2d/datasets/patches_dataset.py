@@ -6,34 +6,34 @@ import cv2
 import numpy as np
 import torch
 import torchvision.transforms as transforms
-from torch.utils.data import DataLoader, Dataset
+from torch.utils.data import Dataset
 
 
 class PatchesDataset(Dataset):
+    """
+    HPatches dataset class.
+    Note: output_shape = (output_width, output_height)
+    Note: this returns Pytorch tensors, resized to output_shape (if specified)
+    Note: the homography will be adjusted according to output_shape.
 
+    Parameters
+    ----------
+    root_dir : str
+        Path to the dataset
+    use_color : bool
+        Return color images or convert to grayscale.
+    data_transform : Function
+        Transformations applied to the sample
+    output_shape: tuple
+        If specified, the images and homographies will be resized to the desired shape.
+    type: str
+        Dataset subset to return from ['i', 'v', 'all']: 
+        i - illumination sequences
+        v - viewpoint sequences
+        all - all sequences
+    """
     def __init__(self, root_dir, use_color=True, data_transform=None, output_shape=None, type='all'):
-        """
-        HPatches dataset class.
-        Note: output_shape = (output_width, output_height)
-        Note: this returns Pytorch tensors, resized to output_shape (if specified)
-        Note: the homography will be adjusted according to output_shape.
 
-        Parameters
-        ----------
-        root_dir : str
-            Path to the dataset
-        use_color : bool
-            Return color images or convert to grayscale.
-        data_transform : Function
-            Transformations applied to the sample
-        output_shape: tuple
-            If specified, the images and homographies will be resized to the desired shape.
-        type: str
-            Dataset subset to return from ['i', 'v', 'all']: 
-            i - illumination sequences
-            v - viewpoint sequences
-            all - all sequences
-        """
         super().__init__()
         self.type = type
         self.root_dir = root_dir

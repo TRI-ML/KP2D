@@ -7,8 +7,6 @@
 
 [**[Full paper]**](https://openreview.net/pdf?id=Skx82ySYPH)
 
-## Inference and evaluation
-
 ### Setting up your environment
 
 You need a machine with recent Nvidia drivers and a GPU. We recommend using docker (see [nvidia-docker2](https://github.com/NVIDIA/nvidia-docker) instructions) to have a reproducible environment. To setup your environment, type in a terminal (only tested in Ubuntu 18.04):
@@ -23,23 +21,60 @@ make docker-build
 We will list below all commands as if run directly inside our container. To run any of the commands in a container, you can either start the container in interactive mode with `make docker-start` to land in a shell where you can type those commands, or you can do it in one step:
 
 ```bash
+# single GPU
 make docker-run COMMAND="some-command"
+# multi-GPU
+make docker-run-mpi COMMAND="some-command"
+```
+
+If you want to use features related to [Weights & Biases (WANDB)](https://www.wandb.com/) (for experiment management/visualization), then you should create associated accounts and configure your shell with the following environment variables:
+
+export WANDB_ENTITY="something"
+export WANDB_API_KEY="something"
+To enable WANDB logging and AWS checkpoint syncing, you can then set the corresponding configuration parameters in `configs/<your config>.yaml` (cf. [configs/base_config.py](configs/base_config.py) for defaults and docs):
+
+```
+wandb:
+    dry_run: True                                 # Wandb dry-run (not logging)
+    name: ''                                      # Wandb run name
+    project: os.environ.get("WANDB_PROJECT", "")  # Wandb project
+    entity: os.environ.get("WANDB_ENTITY", "")    # Wandb entity
+    tags: []                                      # Wandb tags
+    dir: ''                                       # Wandb save folder
 ```
 
 ### Data
 
-Download HPatches data:
+Download the HPatches dataset for evaluation:
 
 ```bash
-mkdir -p /data/datasets/kp2d && cd /data/datasets/kp2d/
+cd /data/datasets/kp2d/
 wget http://icvl.ee.ic.ac.uk/vbalnt/hpatches/hpatches-sequences-release.tar.gz
 tar -xvf hpatches-sequences-release.tar.gz
-mv hpatches-release HPatches
+mv hpatches-sequences-release HPatches
 ```
+
+Download the COCO dataset for training:
+```bash
+mkdir -p /data/datasets/kp2d/coco/ && cd /data/datasets/kp2d/coco/
+wget http://images.cocodataset.org/zips/train2017.zip
+unzip train2017.zip
+```
+
+### Training
+
+To train a model run:
+
+```bash
+make docker-run COMMAND="python scripts/train_keypoint_net.py kp2d/configs/v4.yaml"
+```
+
+To train on multiple GPUs, simply replace `docker-run` with `docker-run-mpi`. Note that we provide the `v0-v4.yaml` config files, one for each version of our model as presented in the ablative analysis of our paper. For evaluating the pre-trained models corresponding to each config file please see hte following section.
+
 
 ### Pre-trained models:
 
-Download the pre-trained models from [here](https://tri-ml-public.s3.amazonaws.com/github/kp2d/models/pretrained_models.tar.gz), extract the `.tar.gz` file and place the contents in `/data/models/kp2d/`. Please note that `/data/` is assumed to exist and that it is mounted in the docker container. To use any other path, please update the appropriate docker container options.
+Download the pre-trained models from [here](https://tri-ml-public.s3.amazonaws.com/github/kp2d/models/pretrained_models.tar.gz) and place them in `/data/models/kp2d/`
 
 To evaluate any of the models, simply run:
 
@@ -71,9 +106,10 @@ Evaluation for **`(640, 480)`**:
 *-these models were trained again after submission - the numbers deviate slightly from the paper, however the same trends can be observed.
 
 
-## Over-fitting Examples
+### Over-fitting Examples
 
 These examples show the model over-fitting on single images. For each image, we show the original frame with detected keypoints (left), the score map (center) and the random crop used for training (right). As training progresses, the model learns to detect salient regions in the images.
+
 
 - **Toy example:**
 <p align="center">
@@ -89,7 +125,7 @@ These examples show the model over-fitting on single images. For each image, we 
   <img src="media/gifs/compressed_w2.gif" alt="Source Frame" width="230" />
 </p>
 
-## Qualatitive Results
+### Qualatitive Results
 
 - **Illumination Cases:**
 
@@ -110,12 +146,12 @@ These examples show the model over-fitting on single images. For each image, we 
   <img src="media/imgs/r2.png" alt="Rotation case(2)" width="600" />
 </p>
 
-## License
+### License
 
 The source code is released under the [MIT license](LICENSE.md).
 
 
-## Citation
+### Citation
 Please use the following citation when referencing our work:
 ```
 @inproceedings{

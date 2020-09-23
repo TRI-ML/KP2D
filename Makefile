@@ -8,6 +8,17 @@ DOCKER_OPTS := \
 			--name ${PROJECT} \
 			--rm -it \
 			--shm-size=${SHMSIZE} \
+			-e AWS_DEFAULT_REGION \
+			-e AWS_ACCESS_KEY_ID \
+			-e AWS_SECRET_ACCESS_KEY \
+			-e WANDB_API_KEY \
+			-e WANDB_ENTITY \
+			-e WANDB_MODE \
+			-e HOST_HOSTNAME= \
+			-e OMP_NUM_THREADS=1 -e KMP_AFFINITY="granularity=fine,compact,1,0" \
+			-e OMPI_ALLOW_RUN_AS_ROOT=1 \
+			-e OMPI_ALLOW_RUN_AS_ROOT_CONFIRM=1 \
+			-e NCCL_DEBUG=VERSION \
             -e DISPLAY=${DISPLAY} \
             -e XAUTHORITY \
             -e NVIDIA_DRIVER_CAPABILITIES=all \
@@ -25,6 +36,19 @@ DOCKER_OPTS := \
 			--ipc=host \
 			--network=host
 	
+NGPUS=$(shell nvidia-smi -L | wc -l)
+MPI_CMD=mpirun \
+		-allow-run-as-root \
+		-np ${NGPUS} \
+		-H localhost:${NGPUS} \
+		-x MASTER_ADDR=127.0.0.1 \
+		-x MASTER_PORT=23457 \
+		-x HOROVOD_TIMELINE \
+		-x OMP_NUM_THREADS=1 \
+		-x KMP_AFFINITY='granularity=fine,compact,1,0' \
+		-bind-to none -map-by slot -x NCCL_DEBUG=INFO -x NCCL_MIN_NRINGS=4 \
+		--report-bindings
+
 .PHONY: all clean docker-build
 
 all: clean
@@ -44,3 +68,7 @@ docker-start: docker-build
 docker-run: docker-build
 	nvidia-docker run ${DOCKER_OPTS} ${DOCKER_IMAGE} \
 		bash -c "${COMMAND}"
+
+docker-run-mpi: docker-build
+	nvidia-docker run ${DOCKER_OPTS} ${DOCKER_IMAGE} \
+		bash -c "${MPI_CMD} ${COMMAND}"

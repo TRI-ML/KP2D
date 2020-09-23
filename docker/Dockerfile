@@ -44,6 +44,27 @@ RUN apt-get clean && apt-get update && apt-get install -y --allow-downgrades --a
     gnuplot \
     ffmpeg 
 
+# Install Open MPI
+RUN mkdir /tmp/openmpi && \
+    cd /tmp/openmpi && \
+    wget https://www.open-mpi.org/software/ompi/v4.0/downloads/openmpi-4.0.0.tar.gz && \
+    tar zxf openmpi-4.0.0.tar.gz && \
+    cd openmpi-4.0.0 && \
+    ./configure --enable-orterun-prefix-by-default && \
+    make -j $(nproc) all && \
+    make install && \
+    ldconfig && \
+    rm -rf /tmp/openmpi
+
+# Install OpenSSH for MPI to communicate between containers
+RUN apt-get install -y --no-install-recommends openssh-client openssh-server && \
+    mkdir -p /var/run/sshd
+
+# Allow OpenSSH to talk to containers without asking for confirmation
+RUN cat /etc/ssh/ssh_config | grep -v StrictHostKeyChecking > /etc/ssh/ssh_config.new && \
+    echo "    StrictHostKeyChecking no" >> /etc/ssh/ssh_config.new && \
+    mv /etc/ssh/ssh_config.new /etc/ssh/ssh_config
+
 # Instal Python and pip
 RUN if [[ "${PYTHON_VERSION}" == "3.6" ]]; then \
     apt-get install -y python${PYTHON_VERSION}-distutils; \
@@ -64,6 +85,11 @@ RUN pip install numpy \
     tensorflow-gpu==${TENSORFLOW_VERSION} \
     keras \
     h5py
+
+RUN ldconfig /usr/local/cuda/targets/x86_64-linux/lib/stubs && \
+    HOROVOD_GPU_ALLREDUCE=NCCL HOROVOD_WITH_TENSORFLOW=1 HOROVOD_WITH_PYTORCH=1 \
+    pip install --no-cache-dir horovod==${HOROVOD_VERSION} && \
+    ldconfig
 
 RUN pip install keras h5py pandas \
     torch==${PYTORCH_VERSION} \
