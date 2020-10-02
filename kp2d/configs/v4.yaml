@@ -1,0 +1,19 @@
+# Copyright 2020 Toyota Research Institute.  All rights reserved.
+
+# Config for training the v4 model: 
+#    + IONet
+#    + descriptor upsampling 
+#    + cross-border keypoints
+#    + descriptor loss
+
+model:
+    params:
+        use_color: True
+        with_io: True
+        do_upsample: True
+        do_cross: True
+        descriptor_loss: True
+
+wandb:
+    dry_run: True
+    project: ""
