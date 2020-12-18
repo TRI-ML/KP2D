@@ -45,13 +45,13 @@ def evaluate_keypoint_net(data_loader, keypoint_net, output_shape=(320, 240), to
 
             score_1, coord_1, desc1 = keypoint_net(image)
             score_2, coord_2, desc2 = keypoint_net(warped_image)
-            B, _, Hc, Wc = desc1.shape
+            B, C, Hc, Wc = desc1.shape
 
             # Scores & Descriptors
             score_1 = torch.cat([coord_1, score_1], dim=1).view(3, -1).t().cpu().numpy()
             score_2 = torch.cat([coord_2, score_2], dim=1).view(3, -1).t().cpu().numpy()
-            desc1 = desc1.view(256, Hc, Wc).view(256, -1).t().cpu().numpy()
-            desc2 = desc2.view(256, Hc, Wc).view(256, -1).t().cpu().numpy()
+            desc1 = desc1.view(C, Hc, Wc).view(C, -1).t().cpu().numpy()
+            desc2 = desc2.view(C, Hc, Wc).view(C, -1).t().cpu().numpy()
             
             # Filter based on confidence threshold
             desc1 = desc1[score_1[:, 2] > conf_threshold, :]
@@ -61,7 +61,7 @@ def evaluate_keypoint_net(data_loader, keypoint_net, output_shape=(320, 240), to
 
             # Prepare data for eval
             data = {'image': sample['image'].numpy().squeeze(),
-                    'image_shape' : output_shape[::-1],
+                    'image_shape' : output_shape,
                     'warped_image': sample['warped_image'].numpy().squeeze(),
                     'homography': sample['homography'].squeeze().numpy(),
                     'prob': score_1, 

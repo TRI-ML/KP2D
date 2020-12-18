@@ -13,21 +13,20 @@ from kp2d.utils.image import (image_grid, to_color_normalized,
 from kp2d.utils.keypoints import draw_keypoints
 
 
-def build_descriptor_loss(source_des, target_des, source_points, tar_points, tar_points_un, top_kk=None, relax_field=8, eval_only=False):
+def build_descriptor_loss(source_des, target_des, source_points, tar_points, tar_points_un, keypoint_mask=None, relax_field=8, eval_only=False):
     """Desc Head Loss, per-pixel level triplet loss from https://arxiv.org/pdf/1902.11046.pdf..
-
     Parameters
     ----------
     source_des: torch.Tensor (B,256,H/8,W/8)
         Source image descriptors.
     target_des: torch.Tensor (B,256,H/8,W/8)
         Target image descriptors.
-    source_points: torch.Tensor (B,H/8,W/8,2) 
-        Source image keypoints 
+    source_points: torch.Tensor (B,H/8,W/8,2)
+        Source image keypoints
     tar_points: torch.Tensor (B,H/8,W/8,2)
-        Target image keypoints 
+        Target image keypoints
     tar_points_un: torch.Tensor (B,2,H/8,W/8)
-        Target image keypoints unnormalized 
+        Target image keypoints unnormalized
     eval_only: bool
         Computes only recall without the loss.
     Returns
@@ -38,73 +37,67 @@ def build_descriptor_loss(source_des, target_des, source_points, tar_points, tar
         Descriptor match recall.
     """
     device = source_des.device
-    loss = 0
-    batch_size = source_des.size(0)
-    recall = 0.
+    batch_size, C, _, _ = source_des.shape
+    loss, recall = 0., 0.
+    margins = 0.2
 
-    relax_field_size = [relax_field]
-    margins          = [1.0]
-    weights          = [1.0]
-
-    is_dense = top_kk is None
-
-    tar_points_associated = []
     for cur_ind in range(batch_size):
 
-        if is_dense:
-            ref_desc = torch.nn.functional.grid_sample(source_des[cur_ind].unsqueeze(0), source_points[cur_ind].unsqueeze(0)).squeeze().view(256, -1)
-            tar_desc = torch.nn.functional.grid_sample(target_des[cur_ind].unsqueeze(0), tar_points[cur_ind].unsqueeze(0)).squeeze().view(256, -1)
+        if keypoint_mask is None:
+            ref_desc = torch.nn.functional.grid_sample(source_des[cur_ind].unsqueeze(0), source_points[cur_ind].unsqueeze(0), align_corners=True).squeeze().view(C, -1)
+            tar_desc = torch.nn.functional.grid_sample(target_des[cur_ind].unsqueeze(0), tar_points[cur_ind].unsqueeze(0), align_corners=True).squeeze().view(C, -1)
             tar_points_raw = tar_points_un[cur_ind].view(2, -1)
         else:
-            top_k = top_kk[cur_ind].squeeze()
+            keypoint_mask_ind = keypoint_mask[cur_ind].squeeze()
 
-            n_feat = top_k.sum().item()
+            n_feat = keypoint_mask_ind.sum().item()
             if n_feat < 20:
                 continue
 
-            ref_desc = torch.nn.functional.grid_sample(source_des[cur_ind].unsqueeze(0), source_points[cur_ind].unsqueeze(0)).squeeze()[:, top_k]
-            tar_desc = torch.nn.functional.grid_sample(target_des[cur_ind].unsqueeze(0), tar_points[cur_ind].unsqueeze(0)).squeeze()[:, top_k]
-            tar_points_raw = tar_points_un[cur_ind][:, top_k]
+            ref_desc = torch.nn.functional.grid_sample(source_des[cur_ind].unsqueeze(0), source_points[cur_ind].unsqueeze(0), align_corners=True).squeeze()[:, keypoint_mask_ind]
+            tar_desc = torch.nn.functional.grid_sample(target_des[cur_ind].unsqueeze(0), tar_points[cur_ind].unsqueeze(0), align_corners=True).squeeze()[:, keypoint_mask_ind]
+            tar_points_raw = tar_points_un[cur_ind][:, keypoint_mask_ind]
 
         # Compute dense descriptor distance matrix and find nearest neighbor
         ref_desc = ref_desc.div(torch.norm(ref_desc, p=2, dim=0))
         tar_desc = tar_desc.div(torch.norm(tar_desc, p=2, dim=0))
         dmat = torch.mm(ref_desc.t(), tar_desc)
-
         dmat = torch.sqrt(2 - 2 * torch.clamp(dmat, min=-1, max=1))
-        _, idx = torch.sort(dmat, dim=1)
 
+        # Sort distance matrix
+        dmat_sorted, idx = torch.sort(dmat, dim=1)
 
         # Compute triplet loss and recall
-        for pyramid in range(len(relax_field_size)):
+        candidates = idx.t() # Candidates, sorted by descriptor distance
 
-            candidates = idx.t()
+        # Get corresponding keypoint positions for each candidate descriptor
+        match_k_x = tar_points_raw[0, candidates]
+        match_k_y = tar_points_raw[1, candidates]
 
-            match_k_x = tar_points_raw[0, candidates]
-            match_k_y = tar_points_raw[1, candidates]
+        # True keypoint coordinates
+        true_x = tar_points_raw[0]
+        true_y = tar_points_raw[1]
 
-            tru_x = tar_points_raw[0]
-            tru_y = tar_points_raw[1]
+        # Compute recall as the number of correct matches, i.e. the first match is the correct one
+        correct_matches = (abs(match_k_x[0]-true_x) == 0) & (abs(match_k_y[0]-true_y) == 0)
+        recall += float(1.0 / batch_size) * (float(correct_matches.float().sum()) / float( ref_desc.size(1)))
 
-            if pyramid == 0:
-                correct2 = (abs(match_k_x[0]-tru_x) == 0) & (abs(match_k_y[0]-tru_y) == 0)
-                correct2_cnt = correct2.float().sum()
-                recall += float(1.0 / batch_size) * (float(correct2_cnt) / float( ref_desc.size(1)))
+        if eval_only:
+            continue
 
-            if eval_only:
-                continue
-            correct_k = (abs(match_k_x - tru_x) <= relax_field_size[pyramid]) & (abs(match_k_y - tru_y) <= relax_field_size[pyramid])
+        # Compute correct matches, allowing for a few pixels tolerance (i.e. relax_field)
+        correct_idx = (abs(match_k_x - true_x) <= relax_field) & (abs(match_k_y - true_y) <= relax_field)
+        # Get hardest negative example as an incorrect match and with the smallest descriptor distance 
+        incorrect_first = dmat_sorted.t()
+        incorrect_first[correct_idx] = 2.0 # largest distance is at most 2
+        incorrect_first = torch.argmin(incorrect_first, dim=0)
+        incorrect_first_index = candidates.gather(0, incorrect_first.unsqueeze(0)).squeeze()
 
-            incorrect_index = torch.arange(start=correct_k.shape[0]-1, end=-1, step=-1).unsqueeze(1).repeat(1,correct_k.shape[1]).to(device)
-            incorrect_first = torch.argmax(incorrect_index * (1 - correct_k.long()), dim=0)
+        anchor_var = ref_desc
+        pos_var    = tar_desc
+        neg_var    = tar_desc[:, incorrect_first_index]
 
-            incorrect_first_index = candidates.gather(0, incorrect_first.unsqueeze(0)).squeeze()
-
-            anchor_var = ref_desc
-            pos_var    = tar_desc
-            neg_var    = tar_desc[:, incorrect_first_index]
-
-            loss += float(1.0 / batch_size) * torch.nn.functional.triplet_margin_loss(anchor_var.t(), pos_var.t(), neg_var.t(), margin=margins[pyramid]).mul(weights[pyramid])
+        loss += float(1.0 / batch_size) * torch.nn.functional.triplet_margin_loss(anchor_var.t(), pos_var.t(), neg_var.t(), margin=margins)
 
     return loss, recall
 
@@ -181,6 +174,7 @@ class KeypointNetwithIOLoss(torch.nn.Module):
         self.cell = 8 # Size of each output cell. Keep this fixed.
         self.border_remove = 4 # Remove points this close to the border.
         self.top_k2 = 300
+        self.relax_field = 4
 
         self.use_color = use_color
         self.descriptor_loss = descriptor_loss
@@ -230,14 +224,13 @@ class KeypointNetwithIOLoss(torch.nn.Module):
 
             B, _, H, W = data['image'].shape
             device = data['image'].device
-            input_img = data['image']
 
             recall_2d = 0
             inlier_cnt = 0
 
+            input_img = data['image']
             input_img_aug = data['image_aug']
             homography = data['homography']
-            homography_inv = data['homography_inv']
 
             input_img = to_color_normalized(input_img.clone())
             input_img_aug = to_color_normalized(input_img_aug.clone())
@@ -247,7 +240,7 @@ class KeypointNetwithIOLoss(torch.nn.Module):
             target_score, target_uv_pred, target_feat = self.keypoint_net(input_img)
             _, _, Hc, Wc = target_score.shape
 
-            #Normalize uv coordinates
+            # Normalize uv coordinates
             # TODO: Have a function for the norm and de-norm of 2d coordinate.
             target_uv_norm = target_uv_pred.clone()
             target_uv_norm[:,0] = (target_uv_norm[:,0] / (float(W-1)/2.)) - 1.
@@ -266,7 +259,7 @@ class KeypointNetwithIOLoss(torch.nn.Module):
             source_uv_warped[:,:,:,1] = (source_uv_warped[:,:,:,1] + 1) * (float(H-1)/2.)
             source_uv_warped = source_uv_warped.permute(0, 3, 1, 2)
 
-            target_uv_resampled = torch.nn.functional.grid_sample(target_uv_pred, source_uv_warped_norm, mode='nearest')
+            target_uv_resampled = torch.nn.functional.grid_sample(target_uv_pred, source_uv_warped_norm, mode='nearest', align_corners=True)
 
             target_uv_resampled_norm = target_uv_resampled.clone()
             target_uv_resampled_norm[:,0] = (target_uv_resampled_norm[:,0] / (float(W-1)/2.)) - 1.
@@ -297,10 +290,10 @@ class KeypointNetwithIOLoss(torch.nn.Module):
 
             #Desc Head Loss, per-pixel level triplet loss from https://arxiv.org/pdf/1902.11046.pdf.
             if self.descriptor_loss:
-                metric_loss, recall_2d = build_descriptor_loss(source_feat, target_feat, source_uv_norm.detach(), source_uv_warped_norm.detach(), source_uv_warped.detach(), top_kk=border_mask, relax_field=8)
+                metric_loss, recall_2d = build_descriptor_loss(source_feat, target_feat, source_uv_norm.detach(), source_uv_warped_norm.detach(), source_uv_warped, keypoint_mask=border_mask, relax_field=self.relax_field)
                 loss_2d += self.descriptor_loss_weight * metric_loss * 2
             else:
-                _, recall_2d = build_descriptor_loss(source_feat, target_feat, source_uv_norm, source_uv_warped_norm, source_uv_warped, top_kk=border_mask, relax_field=8, eval_only=True)
+                _, recall_2d = build_descriptor_loss(source_feat, target_feat, source_uv_norm, source_uv_warped_norm, source_uv_warped, keypoint_mask=border_mask, relax_field=self.relax_field, eval_only=True)
 
             #Score Head Loss
             target_score_associated = target_score.view(B,Hc*Wc).gather(1, d_uv_l2_min_index).view(B,Hc,Wc).unsqueeze(1)
@@ -311,7 +304,7 @@ class KeypointNetwithIOLoss(torch.nn.Module):
             usp_loss = (target_score_associated[dist_norm_valid_mask] + source_score[dist_norm_valid_mask]) * (loc_err - loc_err.mean())
             loss_2d += self.score_loss_weight * usp_loss.mean()
 
-            target_score_resampled = torch.nn.functional.grid_sample(target_score, source_uv_warped_norm.detach(), mode='bilinear')
+            target_score_resampled = torch.nn.functional.grid_sample(target_score, source_uv_warped_norm.detach(), mode='bilinear', align_corners=True)
 
             loss_2d += self.score_loss_weight * torch.nn.functional.mse_loss(target_score_resampled[border_mask.unsqueeze(1)],
                                                                                 source_score[border_mask.unsqueeze(1)]).mean() * 2
@@ -331,8 +324,8 @@ class KeypointNetwithIOLoss(torch.nn.Module):
                 target_uv_norm_topk = target_uv_norm[top_k_mask2].view(B, self.top_k2, 2)
                 source_uv_warped_norm_topk = source_uv_warped_norm[top_k_mask1].view(B, self.top_k2, 2)
 
-                source_feat_topk = torch.nn.functional.grid_sample(source_feat, source_uv_norm_topk.unsqueeze(1)).squeeze()
-                target_feat_topk = torch.nn.functional.grid_sample(target_feat, target_uv_norm_topk.unsqueeze(1)).squeeze()
+                source_feat_topk = torch.nn.functional.grid_sample(source_feat, source_uv_norm_topk.unsqueeze(1), align_corners=True).squeeze()
+                target_feat_topk = torch.nn.functional.grid_sample(target_feat, target_uv_norm_topk.unsqueeze(1), align_corners=True).squeeze()
 
                 source_feat_topk = source_feat_topk.div(torch.norm(source_feat_topk, p=2, dim=1).unsqueeze(1))
                 target_feat_topk = target_feat_topk.div(torch.norm(target_feat_topk, p=2, dim=1).unsqueeze(1))

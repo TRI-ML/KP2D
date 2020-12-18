@@ -324,24 +324,24 @@ def non_spatial_augmentation(img_warp_ori, jitter_paramters, color_order=[0,1,2]
 
 def ha_augment_sample(data, jitter_paramters=[0.5, 0.5, 0.2, 0.05], patch_ratio=0.7, scaling_amplitude=0.2, max_angle=pi/4):
     """Apply Homography Adaptation image augmentation."""
-    input_img = data['image'].unsqueeze(0)
-    _, _, H, W = input_img.shape
-    device = input_img.device
-    
-    homography = torch.from_numpy(
-        sample_homography([H, W], 
+    target_img = data['image'].unsqueeze(0)
+    _, _, H, W = target_img.shape
+    device = target_img.device
+
+    # Generate homography (warps source to target)
+    homography = sample_homography([H, W],
         patch_ratio=patch_ratio, 
         scaling_amplitude=scaling_amplitude, 
-        max_angle=max_angle)).float().to(device)
-    homography_inv = torch.inverse(homography)
+        max_angle=max_angle)
+    homography = torch.from_numpy(homography).float().to(device)
 
-    source = image_grid(1, H, W,
-                    dtype=input_img.dtype,
+    source_grid = image_grid(1, H, W,
+                    dtype=target_img.dtype,
                     device=device,
                     ones=False, normalized=True).clone().permute(0, 2, 3, 1)
 
-    target_warped = warp_homography(source, homography)
-    img_warp = torch.nn.functional.grid_sample(input_img, target_warped)
+    source_warped = warp_homography(source_grid, homography)
+    source_img = torch.nn.functional.grid_sample(target_img, source_warped, align_corners=True)
 
     color_order = [0,1,2]
     if np.random.rand() > 0.5:
@@ -351,11 +351,10 @@ def ha_augment_sample(data, jitter_paramters=[0.5, 0.5, 0.2, 0.05], patch_ratio=
     if np.random.rand() > 0.5:
         to_gray = True
 
-    input_img = non_spatial_augmentation(input_img, jitter_paramters=jitter_paramters, color_order=color_order, to_gray=to_gray)
-    img_warp = non_spatial_augmentation(img_warp, jitter_paramters=jitter_paramters, color_order=color_order, to_gray=to_gray)
+    target_img = non_spatial_augmentation(target_img, jitter_paramters=jitter_paramters, color_order=color_order, to_gray=to_gray)
+    source_img = non_spatial_augmentation(source_img, jitter_paramters=jitter_paramters, color_order=color_order, to_gray=to_gray)
 
-    data['image'] = input_img.squeeze()
-    data['image_aug'] = img_warp.squeeze()
+    data['image'] = target_img.squeeze()
+    data['image_aug'] = source_img.squeeze()
     data['homography'] = homography
-    data['homography_inv'] = homography_inv
     return data

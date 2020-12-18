@@ -8,7 +8,6 @@ import numpy as np
 from PIL import Image
 
 import wandb
-from wandb.git_repo import GitRepo
 
 
 class WandBLogger:
@@ -46,7 +45,6 @@ class WandBLogger:
         super().__init__()
 
         # Set up environment variables to work with wandb
-
         os.environ['WANDB_PROJECT'] = project
         os.environ['WANDB_ENTITY'] = entity
         os.environ['WANDB_MODE'] = mode
@@ -57,14 +55,6 @@ class WandBLogger:
                        'description': description,
                        'name': ''})
 
-        # Update wandb config params with git repo details
-        try:
-            self._repo = wandb.git_repo.GitRepo(root=pwd)
-            params.update({'ip': socket.gethostbyname(socket.gethostname()),
-                           'last_commit': self._repo.last_commit,
-                           'branch': self._repo.branch})
-        except:
-            print('Failed to fetch git repo details.')
         self._wandb_logger = wandb.init(config=params, allow_val_change=True)
         wandb.run.save()
 
@@ -94,9 +84,7 @@ class WandBLogger:
             Flag to log immediately to cloud
         """
         temp = self._parse_values_for_logging(key, values)
-        self._wandb_logger.history.row.update(temp)
-        if now:
-            self.commit_log()
+        self._wandb_logger.log(temp)
 
     def log_summary(self, key, values, now=True):
         """Add metrics to the summary statistics
@@ -111,9 +99,7 @@ class WandBLogger:
             Flag to log immediately to cloud
         """
         temp = self._parse_values_for_logging(key, values)
-        self._wandb_logger.summary.update(temp)
-        if now:
-            self.commit_log()
+        self._wandb_logger.log(self._metrics)
 
     def log_dictionary_subset(self, keys, dictionary, now=True):
         """"Log a subset of a dictionary based on keys
@@ -131,9 +117,6 @@ class WandBLogger:
             if _k in dictionary:
                 log_populated = True
                 self.log_values(_k, dictionary[_k])
-
-        if log_populated and now:
-            self.commit_log()
 
     def commit_log(self):
         """Send buffer to wandb, and create a new row.
@@ -179,9 +162,7 @@ class WandBLogger:
         assert _n_channels == 3
         image_to_log = Image.fromarray(image)
         image_to_log = image_to_log.resize(size, Image.BILINEAR)
-        self._wandb_logger.history.row.update({key: [wandb.Image(image_to_log, caption=caption)]})
-        if now:
-            self.commit_log()
+        self._wandb_logger.log({key: [wandb.Image(image_to_log, caption=caption)]})
 
     def _parse_values_for_logging(self, key, values):
         """Utility to prep dictionary of values for logging"""

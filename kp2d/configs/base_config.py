@@ -49,7 +49,7 @@ cfg.model.optimizer.weight_decay = 0.0
 ########################################################################################################################
 cfg.model.params = CN()                                     
 cfg.model.params.keypoint_loss_weight = 1.0                 # Keypoint loss weight
-cfg.model.params.descriptor_loss_weight = 2.0               # Descriptor loss weight
+cfg.model.params.descriptor_loss_weight = 1.0               # Descriptor loss weight
 cfg.model.params.score_loss_weight = 1.0                    # Score loss weight
 cfg.model.params.use_color = True                           # Use color or grayscale images
 cfg.model.params.with_io = True                             # Use IONet
