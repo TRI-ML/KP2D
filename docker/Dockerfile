@@ -1,12 +1,11 @@
-FROM nvidia/cuda:10.0-devel-ubuntu18.04
+FROM nvidia/cuda:10.1-devel-ubuntu18.04
 
 ENV PROJECT=kp2d
-ENV PYTORCH_VERSION=1.1.0
-ENV TORCHVISION_VERSION=0.3.0
-ENV CUDNN_VERSION=7.6.0.64-1+cuda10.0
-ENV NCCL_VERSION=2.4.7-1+cuda10.0
-ENV TENSORFLOW_VERSION=1.14.0
-ENV HOROVOD_VERSION=0.16.4
+ENV PYTORCH_VERSION=1.6.0
+ENV TORCHVISION_VERSION=0.7.0
+ENV CUDNN_VERSION=7.6.5.32-1+cuda10.1
+ENV NCCL_VERSION=2.7.8-1+cuda10.1
+ENV HOROVOD_VERSION=0.19.5
 
 # Python 2.7 or 3.6 is supported by Ubuntu Bionic out of the box
 ARG python=3.6
@@ -77,25 +76,26 @@ RUN curl -O https://bootstrap.pypa.io/get-pip.py && \
     rm get-pip.py
 
 # Install PyTorch
-RUN pip install future typing numpy awscli
-RUN pip install https://download.pytorch.org/whl/cu100/torch-${PYTORCH_VERSION}-cp36-cp36m-linux_x86_64.whl
-RUN pip install https://download.pytorch.org/whl/cu100/torchvision-${TORCHVISION_VERSION}-cp36-cp36m-linux_x86_64.whl
+RUN pip install future typing numpy awscli packaging
+RUN PYTAGS=$(python -c "from packaging import tags; tag = list(tags.sys_tags())[0]; print(f'{tag.interpreter}-{tag.abi}')") && \
+    pip install https://download.pytorch.org/whl/cu101/torch-${PYTORCH_VERSION}%2Bcu101-${PYTAGS}-linux_x86_64.whl \
+    https://download.pytorch.org/whl/cu101/torchvision-${TORCHVISION_VERSION}%2Bcu101-${PYTAGS}-linux_x86_64.whl
 
 RUN pip install numpy \
-    tensorflow-gpu==${TENSORFLOW_VERSION} \
     keras \
     h5py
-
-RUN ldconfig /usr/local/cuda/targets/x86_64-linux/lib/stubs && \
-    HOROVOD_GPU_ALLREDUCE=NCCL HOROVOD_WITH_TENSORFLOW=1 HOROVOD_WITH_PYTORCH=1 \
-    pip install --no-cache-dir horovod==${HOROVOD_VERSION} && \
-    ldconfig
 
 RUN pip install keras h5py pandas \
     torch==${PYTORCH_VERSION} \
     torchvision==${TORCHVISION_VERSION} && ldconfig
-RUN pip install awscli wandb tensorboardx tqdm termcolor path.py pillow opencv-python-headless matplotlib jupyter boto3 pycuda
 
+RUN ldconfig /usr/local/cuda/targets/x86_64-linux/lib/stubs && \
+    HOROVOD_GPU_ALLREDUCE=NCCL HOROVOD_WITH_PYTORCH=1 \
+    pip install --no-cache-dir horovod==${HOROVOD_VERSION} && \
+    ldconfig
+
+
+RUN pip install awscli wandb tensorboardx tqdm termcolor path.py pillow opencv-python-headless matplotlib jupyter boto3 pycuda
 RUN pip install cython==0.29.10 yacs
 
 # Configure environment variables - default working directory is "/workspace"
@@ -113,5 +113,3 @@ EXPOSE 8888
 WORKDIR /workspace/${PROJECT}
 COPY . /workspace/${PROJECT}
 ENV PYTHONPATH="/workspace/${PROJECT}:$PYTHONPATH"
-# ENV PYTHONPATH="/workspace/monodepth:$PYTHONPATH"
-
