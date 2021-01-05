@@ -211,6 +211,9 @@ def compute_homography(data, keep_k_points=1000):
     matches_idx = np.array([m.trainIdx for m in matches])
     m_warped_keypoints = warped_keypoints[matches_idx, :]
 
+    if m_keypoints.shape[0] <4 or m_warped_keypoints.shape[0] <4:
+        return 0,0,0
+
     # Estimate the homography between the matches using RANSAC
     H, _ = cv2.findHomography(m_keypoints, m_warped_keypoints, cv2.RANSAC, 3, maxIters=5000)
 
