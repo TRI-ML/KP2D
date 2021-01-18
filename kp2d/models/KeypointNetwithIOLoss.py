@@ -324,8 +324,8 @@ class KeypointNetwithIOLoss(torch.nn.Module):
                 target_uv_norm_topk = target_uv_norm[top_k_mask2].view(B, self.top_k2, 2)
                 source_uv_warped_norm_topk = source_uv_warped_norm[top_k_mask1].view(B, self.top_k2, 2)
 
-                source_feat_topk = torch.nn.functional.grid_sample(source_feat, source_uv_norm_topk.unsqueeze(1), align_corners=True).squeeze()
-                target_feat_topk = torch.nn.functional.grid_sample(target_feat, target_uv_norm_topk.unsqueeze(1), align_corners=True).squeeze()
+                source_feat_topk = torch.nn.functional.grid_sample(source_feat, source_uv_norm_topk.unsqueeze(1), align_corners=True).squeeze(2)
+                target_feat_topk = torch.nn.functional.grid_sample(target_feat, target_uv_norm_topk.unsqueeze(1), align_corners=True).squeeze(2)
 
                 source_feat_topk = source_feat_topk.div(torch.norm(source_feat_topk, p=2, dim=1).unsqueeze(1))
                 target_feat_topk = target_feat_topk.div(torch.norm(target_feat_topk, p=2, dim=1).unsqueeze(1))
@@ -355,6 +355,8 @@ class KeypointNetwithIOLoss(torch.nn.Module):
 
                 if inlier_mask.sum() > 10:
 
+                    if inlier_pred.shape != inlier_gt.shape:
+                        inlier_pred = inlier_pred.unsqueeze(0)
                     io_loss = torch.nn.functional.mse_loss(inlier_pred, inlier_gt)
                     loss_2d += self.keypoint_loss_weight * io_loss
 
