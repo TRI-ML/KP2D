@@ -1,0 +1,32 @@
+# Copyright 2020 Toyota Research Institute.  All rights reserved.
+
+# Config for training the v2 model: 
+#    - IONet
+#    + descriptor upsampling 
+#    + cross-border keypoints
+#    + descriptor loss
+# Note: this uses a ResNet-based backbone.
+
+datasets:
+    augmentation:
+        image_shape: (256, 320)
+
+model:
+    params:
+        use_color: True
+        with_io: False
+        do_upsample: True
+        do_cross: True
+        descriptor_loss: True
+        keypoint_net_type: 'KeypointResnet'
+
+datasets:
+    augmentation:
+        image_shape: (256,320)
+        jittering: (0.2, 0.2, 0.2, 0.05)     # Color jittering values
+    train:
+        batch_size: 8
+
+wandb:
+    dry_run: False
+    project: "kp2d"

@@ -142,7 +142,8 @@ def evaluation(config, completed_epoch, model, summary):
     use_color = config.model.params.use_color
 
     if rank() == 0:
-        eval_params = [{'res': (320, 240), 'top_k': 300}]
+        eval_shape = config.datasets.augmentation.image_shape[::-1]
+        eval_params = [{'res': eval_shape, 'top_k': 300}]
         for params in eval_params:
             hp_dataset = PatchesDataset(root_dir=config.datasets.val.path, use_color=use_color, output_shape=params['res'], type='a')
 
