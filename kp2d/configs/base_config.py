@@ -56,6 +56,7 @@ cfg.model.params.with_io = True                             # Use IONet
 cfg.model.params.do_upsample = True                         # Upsample descriptors
 cfg.model.params.do_cross = True                            # Use cross-border keypoints
 cfg.model.params.descriptor_loss = True                     # Use hardest negative mining descriptor loss
+cfg.model.params.keypoint_net_type = 'KeypointNet'
 ########################################################################################################################
 ### DATASETS
 ########################################################################################################################

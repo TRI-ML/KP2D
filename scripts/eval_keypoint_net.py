@@ -18,6 +18,7 @@ from tqdm import tqdm
 from kp2d.datasets.patches_dataset import PatchesDataset
 from kp2d.evaluation.evaluate import evaluate_keypoint_net
 from kp2d.networks.keypoint_net import KeypointNet
+from kp2d.networks.keypoint_resnet import KeypointResnet
 
 
 def main():
@@ -31,20 +32,28 @@ def main():
     checkpoint = torch.load(args.pretrained_model)
     model_args = checkpoint['config']['model']['params']
 
-    # Create and load disp net
-    keypoint_net = KeypointNet(use_color=model_args['use_color'],
-                               do_upsample=model_args['do_upsample'],
-                               do_cross=model_args['do_cross'])
+    # Check model type
+    if 'keypoint_net_type' in checkpoint['config']['model']['params']:
+        net_type = checkpoint['config']['model']['params']
+    else:
+        net_type = KeypointNet # default when no type is specified
+
+    # Create and load keypoint net
+    if net_type is KeypointNet:
+        keypoint_net = KeypointNet(use_color=model_args['use_color'],
+                                do_upsample=model_args['do_upsample'],
+                                do_cross=model_args['do_cross'])
+    else:
+        keypoint_net = KeypointResnet()
+
     keypoint_net.load_state_dict(checkpoint['state_dict'])
     keypoint_net = keypoint_net.cuda()
     keypoint_net.eval()
     print('Loaded KeypointNet from {}'.format(args.pretrained_model))
     print('KeypointNet params {}'.format(model_args))
 
-    eval_params = [
-        {'res': (320, 240), 'top_k': 300, }, 
-        {'res': (640, 480), 'top_k': 1000, } 
-    ]
+    eval_params = [{'res': (320, 240), 'top_k': 300, }] if net_type is KeypointNet else [{'res': (320, 256), 'top_k': 300, }] # KeypointResnet needs (320,256)
+    eval_params += [{'res': (640, 480), 'top_k': 1000, }]
 
     for params in eval_params:
         hp_dataset = PatchesDataset(root_dir=args.input_dir, use_color=True,
