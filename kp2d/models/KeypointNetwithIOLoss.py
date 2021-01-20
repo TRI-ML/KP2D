@@ -8,6 +8,7 @@ from matplotlib.cm import get_cmap
 
 from kp2d.networks.inlier_net import InlierNet
 from kp2d.networks.keypoint_net import KeypointNet
+from kp2d.networks.keypoint_resnet import KeypointResnet
 from kp2d.utils.image import (image_grid, to_color_normalized,
                               to_gray_normalized)
 from kp2d.utils.keypoints import draw_keypoints
@@ -161,7 +162,7 @@ class KeypointNetwithIOLoss(torch.nn.Module):
     def __init__(
         self, keypoint_loss_weight=1.0, descriptor_loss_weight=2.0, score_loss_weight=1.0, 
         keypoint_net_learning_rate=0.001, with_io=True, use_color=True, do_upsample=True, 
-        do_cross=True, descriptor_loss=True, with_drop=True, **kwargs):
+        do_cross=True, descriptor_loss=True, with_drop=True, keypoint_net_type='KeypointNet', **kwargs):
 
         super().__init__()
 
@@ -180,7 +181,12 @@ class KeypointNetwithIOLoss(torch.nn.Module):
         self.descriptor_loss = descriptor_loss
 
         # Initialize KeypointNet
-        self.keypoint_net = KeypointNet(use_color=use_color, do_upsample=do_upsample, with_drop=with_drop, do_cross=do_cross)
+        if keypoint_net_type == 'KeypointNet':
+            self.keypoint_net = KeypointNet(use_color=use_color, do_upsample=do_upsample, with_drop=with_drop, do_cross=do_cross)
+        elif keypoint_net_type == 'KeypointResnet':
+            self.keypoint_net = KeypointResnet(with_drop=with_drop)
+        else:
+            raise NotImplemented('Keypoint net type not supported {}'.format(keypoint_net_type))
         self.keypoint_net = self.keypoint_net.cuda()
         self.add_optimizer_params('KeypointNet', self.keypoint_net.parameters(), keypoint_net_learning_rate)
 
