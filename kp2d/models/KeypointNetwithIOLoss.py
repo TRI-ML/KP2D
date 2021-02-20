@@ -185,7 +185,7 @@ class KeypointNetwithIOLoss(torch.nn.Module):
             self.keypoint_net = KeypointNet(use_color=use_color, do_upsample=do_upsample, with_drop=with_drop, do_cross=do_cross)
         elif keypoint_net_type == 'KeypointResnet':
             self.keypoint_net = KeypointResnet(with_drop=with_drop)
-        elif keypoint_net_type == 'KeypointMixnet':
+        elif keypoint_net_type == 'MixKeypointNet':
             self.keypoint_net = MixKeypointNet(use_color=use_color, do_upsample=do_upsample, with_drop=with_drop, do_cross=do_cross)
         else:
             raise NotImplemented('Keypoint net type not supported {}'.format(keypoint_net_type))

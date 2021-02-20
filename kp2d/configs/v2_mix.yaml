@@ -13,7 +13,7 @@ model:
         do_upsample: True
         do_cross: True
         descriptor_loss: True
-        keypoint_net_type: 'MixKeypointResnet'
+        keypoint_net_type: 'MixKeypointNet'
 
 
 datasets:
