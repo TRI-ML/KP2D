@@ -73,13 +73,13 @@ cfg.datasets.augmentation.jittering = (0.5, 0.5, 0.2, 0.05)     # Color jitterin
 cfg.datasets.train = CN()
 cfg.datasets.train.batch_size = 8                                      # Training batch size
 cfg.datasets.train.num_workers = 16                                    # Training number of workers
-cfg.datasets.train.path = '/data/datasets/kp2d/coco/train2017/'        # Training data path (COCO dataset)
+cfg.datasets.train.path = '/data/train2017/'        # Training data path (COCO dataset)
 cfg.datasets.train.repeat = 1                                          # Number of times training dataset is repeated per epoch
 ########################################################################################################################
 ### DATASETS.VAL
 ########################################################################################################################
 cfg.datasets.val = CN()
-cfg.datasets.val.path = '/data/datasets/kp2d/HPatches/'     # Validation data path (HPatches)
+cfg.datasets.val.path = '/data/HPatches/'     # Validation data path (HPatches)
 ########################################################################################################################
 ### THESE SHOULD NOT BE CHANGED
 ########################################################################################################################
