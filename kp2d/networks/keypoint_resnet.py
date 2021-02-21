@@ -29,6 +29,7 @@ class KeypointEncoder(nn.Module):
         super(KeypointEncoder, self).__init__()
 
         self.rn = models.resnet18(pretrained)
+        self.rn.fc = None
         self.dropout = nn.Dropout2d(0.2)
         self.use_dropout = with_drop
 

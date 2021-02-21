@@ -28,5 +28,5 @@ datasets:
         batch_size: 8
 
 wandb:
-    dry_run: False
-    project: "kp2d"
+    dry_run: True
+    project: ""
