@@ -200,24 +200,21 @@ class GroupMixSepConvBlock(nn.Module):
             in_features = 8
             self.prep = nn.Conv2d(old_features, in_features, kernel_size=1, bias=False)
         self.in_features = in_features
-        self.dw3 = nn.Conv2d(in_features // 4, in_features // 4, groups=in_features // 4, kernel_size=3,
+        self.dw3 = nn.Conv2d(in_features // 2, in_features // 2, groups=in_features // 2, kernel_size=3,
                              padding=1, stride=stride, dilation=dilation, bias=bias)
         self.dw5 = nn.Conv2d(in_features // 2, in_features // 2, groups=in_features // 2, kernel_size=5,
                              padding=2, stride=stride, dilation=dilation, bias=bias)
-        self.dw7 = nn.Conv2d(in_features // 4, in_features // 4, groups=in_features // 4, kernel_size=7,
-                             padding=3, stride=stride, dilation=dilation, bias=bias)
 
-        self.pw = nn.Conv2d(in_features, out_features, kernel_size=1, bias=False)
+        self.pw = nn.Conv2d(in_features * 2, out_features, kernel_size=1, bias=False)
         self.bn = nn.Sequential(nn.BatchNorm2d(out_features), nn.LeakyReLU(inplace=False))
 
     def forward(self, x):
         if x.shape[1] < 4:
             x = self.prep(x)
-        q = self.in_features // 4
+        q = self.in_features // 2
         x3 = self.dw3(x[:, :q, :, :])
-        x5 = self.dw5(x[:, q: 3 * q, :, :])
-        x7 = self.dw7(x[:, 3 * q:, :, :])
-        y = self.pw(torch.cat([x3, x5, x7], dim=1) + x)
+        x5 = self.dw5(x[:, q: , :, :])
+        y = self.pw(torch.cat([x3, x5, x], dim=1))
         return self.bn(y)
 
 
@@ -503,10 +500,8 @@ class FastKeypointNet(nn.Module):
         feat: torch.Tensor
             Keypoint descriptors (B, 256, H_out, W_out)
         """
-        print(x.shape)
-        x = self.downsample(x)
-        print(x.shape)
         B, _, H, W = x.shape
+        x = self.downsample(x)
 
         x = self.relu(self.conv1a(x))
         x = self.relu(self.conv1b(x))
