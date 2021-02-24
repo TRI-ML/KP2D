@@ -17,7 +17,7 @@ model:
 
 datasets:
   train:
-    batch_size: 12
+    batch_size: 24
 
 wandb:
   dry_run: True
