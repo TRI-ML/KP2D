@@ -1,13 +1,10 @@
 # Copyright 2020 Toyota Research Institute.  All rights reserved.
 
-from functools import lru_cache
-
 import torch
-import torch.nn.functional as F
 
 
-@lru_cache(maxsize=None)
-def meshgrid(B, H, W, dtype, device, normalized=False):
+@torch.jit.script
+def meshgrid(B: int, H: int, W: int, normalized: bool = False):
     """Create mesh-grid given batch size, height and width dimensions.
 
     Parameters
@@ -33,17 +30,17 @@ def meshgrid(B, H, W, dtype, device, normalized=False):
         Batched mesh-grid y-coordinates (BHW).
     """
     if normalized:
-        xs = torch.linspace(-1, 1, W, device=device, dtype=dtype)
-        ys = torch.linspace(-1, 1, H, device=device, dtype=dtype)
+        xs = torch.linspace(-1, 1, W, )
+        ys = torch.linspace(-1, 1, H)
     else:
-        xs = torch.linspace(0, W-1, W, device=device, dtype=dtype)
-        ys = torch.linspace(0, H-1, H, device=device, dtype=dtype)
+        xs = torch.arange(W)
+        ys = torch.arange(H)
     ys, xs = torch.meshgrid([ys, xs])
     return xs.repeat([B, 1, 1]), ys.repeat([B, 1, 1])
 
 
-@lru_cache(maxsize=None)
-def image_grid(B, H, W, dtype, device, ones=True, normalized=False):
+@torch.jit.script
+def image_grid(B: int, H: int, W: int, ones: bool = True, normalized: bool = False):
     """Create an image mesh grid with shape B3HW given image shape BHW
 
     Parameters
@@ -68,7 +65,7 @@ def image_grid(B, H, W, dtype, device, ones=True, normalized=False):
     grid: torch.Tensor
         Mesh-grid for the corresponding image shape (B3HW)
     """
-    xs, ys = meshgrid(B, H, W, dtype, device, normalized=normalized)
+    xs, ys = meshgrid(B, H, W, normalized=normalized)
     coords = [xs, ys]
     if ones:
         coords.append(torch.ones_like(xs))  # BHW
@@ -92,7 +89,7 @@ def to_gray_normalized(images):
     assert len(images.shape) == 4
     images -= 0.5
     images *= 0.225
-    normalized_images = images.mean(1).unsqueeze(1) 
+    normalized_images = images.mean(1).unsqueeze(1)
     return normalized_images
 
 

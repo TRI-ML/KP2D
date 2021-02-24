@@ -103,6 +103,59 @@ class MixSepConvBlock(nn.Module):
         y = self.pw(features)
         return self.bn(y)
 
+@torch.jit.script
+def _preprocess_grid(x, cell: int, step: float):
+    return x.mul(cell) + step
+
+
+class Stem(torch.nn.Module):
+    def __init__(self,
+                 with_drop,
+                 base_conv_block=get_vanilla_conv_block,
+                 ):
+        super().__init__()
+        c0, c1, c2, c3, c4 = 3, 32, 64, 128, 256
+
+        self.conv1a = base_conv_block(c0, c1)
+        self.conv1b = base_conv_block(c1, c1)
+        self.conv2a = base_conv_block(c1, c2)
+        self.conv2b = base_conv_block(c2, c2)
+        self.conv3a = base_conv_block(c2, c3)
+        self.conv3b = base_conv_block(c3, c3)
+        self.conv4a = base_conv_block(c3, c4)
+        self.conv4b = base_conv_block(c4, c4)
+        self.relu = torch.nn.LeakyReLU(inplace=True)
+        if with_drop:
+            self.dropout = torch.nn.Dropout2d(0.2)
+        else:
+            self.dropout = None
+        self.pool = torch.nn.MaxPool2d(kernel_size=2, stride=2)
+
+    def forward(self, x):
+        B, _, H, W = x.shape
+
+        x = self.relu(self.conv1a(x))
+        x = self.relu(self.conv1b(x))
+        if self.dropout:
+            x = self.dropout(x)
+        x = self.pool(x)
+        x = self.relu(self.conv2a(x))
+        x = self.relu(self.conv2b(x))
+        if self.dropout:
+            x = self.dropout(x)
+        x = self.pool(x)
+        x = self.relu(self.conv3a(x))
+        skip = self.relu(self.conv3b(x))
+        if self.dropout:
+            skip = self.dropout(skip)
+        x = self.pool(skip)
+        x = self.relu(self.conv4a(x))
+        x = self.relu(self.conv4b(x))
+        if self.dropout:
+            x = self.dropout(x)
+
+        return x, skip
+
 
 class KeypointNet(torch.nn.Module):
     """
@@ -134,27 +187,15 @@ class KeypointNet(torch.nn.Module):
         self.do_cross = do_cross
         self.do_upsample = do_upsample
 
-        if self.use_color:
-            c0 = 3
-        else:
-            c0 = 1
-
         self.bn_momentum = 0.1
         self.cross_ratio = 2.0
 
         if self.do_cross is False:
             self.cross_ratio = 1.0
 
-        c1, c2, c3, c4, c5, d1 = 32, 64, 128, 256, 256, 512
+        c4, c5, d1 = 256, 256, 512
 
-        self.conv1a = base_conv_block(c0, c1)
-        self.conv1b = base_conv_block(c1, c1)
-        self.conv2a = base_conv_block(c1, c2)
-        self.conv2b = base_conv_block(c2, c2)
-        self.conv3a = base_conv_block(c2, c3)
-        self.conv3b = base_conv_block(c3, c3)
-        self.conv4a = base_conv_block(c3, c4)
-        self.conv4b = base_conv_block(c4, c4)
+        self.stem = Stem(base_conv_block=base_conv_block, with_drop=with_drop)
 
         # Score Head.
         self.convDa = base_conv_block(c4, c5)
@@ -199,27 +240,7 @@ class KeypointNet(torch.nn.Module):
             Keypoint descriptors (B, 256, H_out, W_out)
         """
         B, _, H, W = x.shape
-
-        x = self.relu(self.conv1a(x))
-        x = self.relu(self.conv1b(x))
-        if self.dropout:
-            x = self.dropout(x)
-        x = self.pool(x)
-        x = self.relu(self.conv2a(x))
-        x = self.relu(self.conv2b(x))
-        if self.dropout:
-            x = self.dropout(x)
-        x = self.pool(x)
-        x = self.relu(self.conv3a(x))
-        skip = self.relu(self.conv3b(x))
-        if self.dropout:
-            skip = self.dropout(skip)
-        x = self.pool(skip)
-        x = self.relu(self.conv4a(x))
-        x = self.relu(self.conv4b(x))
-        if self.dropout:
-            x = self.dropout(x)
-
+        x, skip = self.stem(x)
         B, _, Hc, Wc = x.shape
 
         score = self.relu(self.convDa(x))
@@ -242,10 +263,8 @@ class KeypointNet(torch.nn.Module):
 
         step = (self.cell - 1) / 2.
         center_base = image_grid(B, Hc, Wc,
-                                 dtype=center_shift.dtype,
-                                 device=center_shift.device,
-                                 ones=False, normalized=False).mul(self.cell) + step
-
+                                 ones=False, normalized=False)
+        center_base = _preprocess_grid(center_base, self.cell, step).to(center_shift.device)
         coord_un = center_base.add(center_shift.mul(self.cross_ratio * step))
         coord = coord_un.clone()
         coord[:, 0] = torch.clamp(coord_un[:, 0], min=0, max=W - 1)

@@ -13,11 +13,13 @@ model:
     do_upsample: True
     do_cross: True
     descriptor_loss: True
-    keypoint_net_type: 'KeypointMixNet'
+    keypoint_net_type: 'KeypointSepNet'
+
 
 datasets:
   train:
     batch_size: 12
+
 
 wandb:
   dry_run: True
