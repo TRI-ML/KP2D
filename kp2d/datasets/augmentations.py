@@ -336,8 +336,6 @@ def ha_augment_sample(data, jitter_paramters=[0.5, 0.5, 0.2, 0.05], patch_ratio=
     homography = torch.from_numpy(homography).float().to(device)
 
     source_grid = image_grid(1, H, W,
-                    dtype=target_img.dtype,
-                    device=device,
                     ones=False, normalized=True).clone().permute(0, 2, 3, 1)
 
     source_warped = warp_homography(source_grid, homography)
