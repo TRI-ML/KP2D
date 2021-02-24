@@ -282,7 +282,6 @@ class KeypointNet(torch.nn.Module):
             coord_norm[:, 0] = (coord_norm[:, 0] / (float(W - 1) / 2.)) - 1.
             coord_norm[:, 1] = (coord_norm[:, 1] / (float(H - 1) / 2.)) - 1.
             coord_norm = coord_norm.permute(0, 2, 3, 1)
-
             feat = torch.nn.functional.grid_sample(feat, coord_norm, align_corners=True)
 
             dn = torch.norm(feat, p=2, dim=1)  # Compute the norm.
