@@ -18,7 +18,7 @@ model:
 
 datasets:
   train:
-    batch_size: 12
+    batch_size: 20
 
 
 wandb:
