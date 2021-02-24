@@ -109,6 +109,15 @@ def _preprocess_grid(x, cell: int, step: float):
     return x.mul(cell) + step
 
 
+@torch.jit.script
+def _process_coord(x, coord):
+    B, _, H, W = x.shape
+    coord_norm = coord[:, :2].clone()
+    coord_norm[:, 0] = (coord_norm[:, 0] / (float(W - 1) / 2.)) - 1.
+    coord_norm[:, 1] = (coord_norm[:, 1] / (float(H - 1) / 2.)) - 1.
+    return coord_norm.permute(0, 2, 3, 1)
+
+
 class Stem(torch.nn.Module):
     def __init__(self,
                  with_drop,
@@ -219,7 +228,7 @@ class KeypointNet(torch.nn.Module):
         self.cell = 8
         self.upsample = torch.nn.PixelShuffle(upscale_factor=2)
 
-    def forward(self, x):
+    def forward(self, inputs):
         """
         Processes a batch of images.
 
@@ -237,8 +246,8 @@ class KeypointNet(torch.nn.Module):
         feat: torch.Tensor
             Keypoint descriptors (B, 256, H_out, W_out)
         """
-        B, _, H, W = x.shape
-        x, skip = self.stem(x)
+        B, _, H, W = inputs.shape
+        x, skip = self.stem(inputs)
         B, _, Hc, Wc = x.shape
 
         score = self.relu(self.convDa(x))
@@ -260,8 +269,7 @@ class KeypointNet(torch.nn.Module):
         center_shift = self.convPb(center_shift).tanh()
 
         step = (self.cell - 1) / 2.
-        center_base = image_grid(B, Hc, Wc,
-                                 ones=False, normalized=False)
+        center_base = image_grid(x, ones=False, normalized=False)
         center_base = _preprocess_grid(center_base, self.cell, step).to(center_shift.device)
         coord_un = center_base.add(center_shift.mul(self.cross_ratio * step))
         coord = coord_un.clone()
@@ -278,10 +286,7 @@ class KeypointNet(torch.nn.Module):
         feat = self.convFbb(feat)
 
         if self.training is False:
-            coord_norm = coord[:, :2].clone()
-            coord_norm[:, 0] = (coord_norm[:, 0] / (float(W - 1) / 2.)) - 1.
-            coord_norm[:, 1] = (coord_norm[:, 1] / (float(H - 1) / 2.)) - 1.
-            coord_norm = coord_norm.permute(0, 2, 3, 1)
+            coord_norm = _process_coord(inputs, coord)
             feat = torch.nn.functional.grid_sample(feat, coord_norm, align_corners=True)
 
             dn = torch.norm(feat, p=2, dim=1)  # Compute the norm.

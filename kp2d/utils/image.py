@@ -40,7 +40,7 @@ def meshgrid(B: int, H: int, W: int, normalized: bool = False):
 
 
 @torch.jit.script
-def image_grid(B: int, H: int, W: int, ones: bool = True, normalized: bool = False):
+def image_grid(x, ones: bool = True, normalized: bool = False):
     """Create an image mesh grid with shape B3HW given image shape BHW
 
     Parameters
@@ -65,6 +65,7 @@ def image_grid(B: int, H: int, W: int, ones: bool = True, normalized: bool = Fal
     grid: torch.Tensor
         Mesh-grid for the corresponding image shape (B3HW)
     """
+    B, _, H, W = x.shape
     xs, ys = meshgrid(B, H, W, normalized=normalized)
     coords = [xs, ys]
     if ones:
