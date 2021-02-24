@@ -30,8 +30,8 @@ def meshgrid(B: int, H: int, W: int, normalized: bool = False):
         Batched mesh-grid y-coordinates (BHW).
     """
     if normalized:
-        xs = torch.arange(0, W) / (W - 1) * 2 - 1
-        ys = torch.arange(0, H) / (H - 1) * 2 - 1
+        xs = torch.arange(W).float() / (W - 1) * 2 - 1
+        ys = torch.arange(H).float() / (H - 1) * 2 - 1
     else:
         xs = torch.arange(W).float()
         ys = torch.arange(H).float()
