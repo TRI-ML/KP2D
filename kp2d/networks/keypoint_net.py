@@ -46,7 +46,7 @@ class SpaceToDepthModule(nn.Module):
 def get_vanilla_conv_block(in_channels, out_channels, momentum=0.9):
     return torch.nn.Sequential(
         torch.nn.Conv2d(in_channels, out_channels, kernel_size=3, stride=1, padding=1, bias=False),
-        torch.nn.BatchNorm2d(out_channels, momentum=momentum)
+        torch.nn.BatchNorm2d(out_channels, momentum=momentum),
     )
 
 
@@ -61,7 +61,7 @@ class SepConvBlock(nn.Module):
         self.depthwise = nn.Conv2d(in_channels, in_channels, groups=in_channels // group_size or 1, kernel_size=3,
                                    padding=1, stride=stride, dilation=dilation, bias=bias)
         self.pointwise = nn.Conv2d(in_channels * (2 if residual_concat else 1), out_channels, kernel_size=1, bias=False)
-        self.bn = nn.Sequential(nn.BatchNorm2d(out_channels), nn.LeakyReLU(inplace=False))
+        self.bn = nn.BatchNorm2d(out_channels)
 
     def forward(self, x):
         features = torch.cat([x, self.depthwise(x)], dim=1) if self.residual_concat else x + self.depthwise(x)
@@ -91,7 +91,7 @@ class MixSepConvBlock(nn.Module):
                              padding=2, stride=stride, dilation=dilation, bias=bias)
 
         self.pw = nn.Conv2d(in_channels * (2 if residual_concat else 1), out_channels, kernel_size=1, bias=False)
-        self.bn = nn.Sequential(nn.BatchNorm2d(out_channels), nn.LeakyReLU(inplace=False))
+        self.bn = nn.BatchNorm2d(out_channels)
 
     def forward(self, x):
         if x.shape[1] < 4:
@@ -102,6 +102,7 @@ class MixSepConvBlock(nn.Module):
         features = torch.cat([x3, x5, x], dim=1) if self.residual_concat else torch.cat([x3, x5], dim=1) + x
         y = self.pw(features)
         return self.bn(y)
+
 
 @torch.jit.script
 def _preprocess_grid(x, cell: int, step: float):
@@ -128,7 +129,7 @@ class Stem(torch.nn.Module):
         if with_drop:
             self.dropout = torch.nn.Dropout2d(0.2)
         else:
-            self.dropout = None
+            self.dropout = torch.nn.Identity()
         self.pool = torch.nn.MaxPool2d(kernel_size=2, stride=2)
 
     def forward(self, x):
@@ -136,23 +137,20 @@ class Stem(torch.nn.Module):
 
         x = self.relu(self.conv1a(x))
         x = self.relu(self.conv1b(x))
-        if self.dropout:
-            x = self.dropout(x)
+        x = self.dropout(x)
         x = self.pool(x)
+
         x = self.relu(self.conv2a(x))
         x = self.relu(self.conv2b(x))
-        if self.dropout:
-            x = self.dropout(x)
+        x = self.dropout(x)
         x = self.pool(x)
         x = self.relu(self.conv3a(x))
         skip = self.relu(self.conv3b(x))
-        if self.dropout:
-            skip = self.dropout(skip)
+        skip = self.dropout(skip)
         x = self.pool(skip)
         x = self.relu(self.conv4a(x))
         x = self.relu(self.conv4b(x))
-        if self.dropout:
-            x = self.dropout(x)
+        x = self.dropout(x)
 
         return x, skip
 
