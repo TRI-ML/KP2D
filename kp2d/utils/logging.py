@@ -5,7 +5,6 @@
 import os
 
 from termcolor import colored
-import horovod.torch as hvd
 import numpy as np
 import torch
 
@@ -19,8 +18,8 @@ def printcolor_single(message, color="white"):
 
 def printcolor(message, color="white"):
     "Print a message in a certain color (only rank 0)"
-    if hvd.rank() == 0:
-        print(colored(message, color))
+
+    print(colored(message, color))
 
 
 class SummaryWriter:

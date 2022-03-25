@@ -1,14 +1,14 @@
 # Copyright 2020 Toyota Research Institute.  All rights reserved.
 
-# Config for training the v4 model: 
+# Config for training the v4 model:
 #    + IONet
-#    + descriptor upsampling 
+#    + descriptor upsampling
 #    + cross-border keypoints
 #    + descriptor loss
 
 model:
     params:
-        use_color: True
+        use_color: False
         with_io: True
         do_upsample: True
         do_cross: True
@@ -19,7 +19,7 @@ wandb:
     project: ""
 datasets:
     train:
-        path: "D:/MachineLearning/Coco/train_debug"
+        path: "D:/MachineLearning/Coco/train2017"
     val:
         path: "D:/PycharmProjects/KP2D/data/datasets/kp2d/HPatches"
 

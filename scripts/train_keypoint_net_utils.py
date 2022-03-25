@@ -8,7 +8,6 @@ import torch
 import torch.utils.data.distributed
 from torch.utils.data import ConcatDataset, DataLoader
 
-import horovod.torch as hvd
 from kp2d.datasets.augmentations import (ha_augment_sample, resize_sample,
                                          spatial_augment_sample,
                                          to_tensor_sample)

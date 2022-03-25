@@ -11,12 +11,10 @@ import torchvision.transforms as transforms
 from torch.utils.data import ConcatDataset, DataLoader
 from tqdm import tqdm
 
-import horovod.torch as hvd
 from kp2d.datasets.patches_dataset import PatchesDataset
 from kp2d.evaluation.evaluate import evaluate_keypoint_net
 from kp2d.models.KeypointNetwithIOLoss import KeypointNetwithIOLoss
 from kp2d.utils.config import parse_train_file
-from kp2d.utils.horovod import hvd_init, local_rank, rank, world_size
 from kp2d.utils.logging import SummaryWriter, printcolor
 from train_keypoint_net_utils import (_set_seeds, sample_to_cuda,
                                       setup_datasets_and_dataloaders)
@@ -64,25 +62,19 @@ def main(file):
     print(config.arch)
 
     # Initialize horovod
-    hvd_init()
     n_threads = int(os.environ.get("OMP_NUM_THREADS", 1))
     torch.set_num_threads(n_threads)    
     torch.backends.cudnn.benchmark = True
     # torch.backends.cudnn.deterministic = True
 
-    if world_size() > 1:
-        printcolor('-'*18 + 'DISTRIBUTED DATA PARALLEL ' + '-'*18, 'cyan')
-        device_id = local_rank()
-        torch.cuda.set_device(device_id)
-    else:
-        printcolor('-'*25 + 'SINGLE GPU ' + '-'*25, 'cyan')
+
+    printcolor('-'*25 + 'SINGLE GPU ' + '-'*25, 'cyan')
     
     if config.arch.seed is not None:
         _set_seeds(config.arch.seed)
 
-    if rank() == 0:
-        printcolor('-'*25 + ' MODEL PARAMS ' + '-'*25)
-        printcolor(config.model.params, 'red')
+    printcolor('-'*25 + ' MODEL PARAMS ' + '-'*25)
+    printcolor(config.model.params, 'red')
 
     # Setup model and datasets/dataloaders
     model = KeypointNetwithIOLoss(**config.model.params)
@@ -91,35 +83,28 @@ def main(file):
 
     model = model.cuda()
     optimizer = optim.Adam(model.optim_params)
-    compression = hvd.Compression.none  # or hvd.Compression.fp16
-    optimizer = hvd.DistributedOptimizer(optimizer, named_parameters=model.named_parameters(), compression=compression)
-
-    # Synchronize model weights from all ranks
-    hvd.broadcast_parameters(model.state_dict(), root_rank=0)
 
     # checkpoint model
     log_path = os.path.join(config.model.checkpoint_path, 'logs')
     os.makedirs(log_path, exist_ok=True)
-    
-    if rank() == 0:
-        if not config.wandb.dry_run:
-            summary = SummaryWriter(log_path,
-                                    config,
-                                    project=config.wandb.project,
-                                    entity=config.wandb.entity,
-                                    job_type='training',
-                                    mode=os.getenv('WANDB_MODE', 'run'))
-            config.model.checkpoint_path = os.path.join(config.model.checkpoint_path, summary.run_name)
-        else:
-            summary = None
-            date_time = datetime.now().strftime("%m_%d_%Y__%H_%M_%S")
-            date_time = model_submodule(model).__class__.__name__ + '_' + date_time
-            config.model.checkpoint_path = os.path.join(config.model.checkpoint_path, date_time)
-        
-        print('Saving models at {}'.format(config.model.checkpoint_path))
-        os.makedirs(config.model.checkpoint_path, exist_ok=True)    
+
+    if not config.wandb.dry_run:
+        summary = SummaryWriter(log_path,
+                                config,
+                                project=config.wandb.project,
+                                entity=config.wandb.entity,
+                                job_type='training',
+                                mode=os.getenv('WANDB_MODE', 'run'))
+        config.model.checkpoint_path = os.path.join(config.model.checkpoint_path, summary.run_name)
     else:
         summary = None
+        date_time = datetime.now().strftime("%m_%d_%Y__%H_%M_%S")
+        date_time = model_submodule(model).__class__.__name__ + '_' + date_time
+        config.model.checkpoint_path = os.path.join(config.model.checkpoint_path, date_time)
+
+    print('Saving models at {}'.format(config.model.checkpoint_path))
+    os.makedirs(config.model.checkpoint_path, exist_ok=True)
+
 
     # Initial evaluation
     evaluation(config, 0, model, summary)
@@ -141,44 +126,43 @@ def evaluation(config, completed_epoch, model, summary):
 
     use_color = config.model.params.use_color
 
-    if rank() == 0:
-        eval_shape = config.datasets.augmentation.image_shape[::-1]
-        eval_params = [{'res': eval_shape, 'top_k': 300}]
-        for params in eval_params:
-            hp_dataset = PatchesDataset(root_dir=config.datasets.val.path, use_color=use_color, output_shape=params['res'], type='a')
+    eval_shape = config.datasets.augmentation.image_shape[::-1]
+    eval_params = [{'res': eval_shape, 'top_k': 300}]
+    for params in eval_params:
+        hp_dataset = PatchesDataset(root_dir=config.datasets.val.path, use_color=use_color, output_shape=params['res'], type='a')
 
-            data_loader = DataLoader(hp_dataset,
-                                    batch_size=1,
-                                    pin_memory=False,
-                                    shuffle=False,
-                                    num_workers=8,
-                                    worker_init_fn=None,
-                                    sampler=None)
-            print('Loaded {} image pairs '.format(len(data_loader)))
+        data_loader = DataLoader(hp_dataset,
+                                batch_size=1,
+                                pin_memory=False,
+                                shuffle=False,
+                                num_workers=8,
+                                worker_init_fn=None,
+                                sampler=None)
+        print('Loaded {} image pairs '.format(len(data_loader)))
 
-            printcolor('Evaluating for {} -- top_k {}'.format(params['res'], params['top_k']))
-            rep, loc, c1, c3, c5, mscore = evaluate_keypoint_net(data_loader,
-                                                                model_submodule(model).keypoint_net,
-                                                                output_shape=params['res'],
-                                                                top_k=params['top_k'],
-                                                                use_color=use_color)
-            if summary:
-                summary.add_scalar('repeatability_'+str(params['res']), rep)
-                summary.add_scalar('localization_' + str(params['res']), loc)
-                summary.add_scalar('correctness_'+str(params['res'])+'_'+str(1), c1)
-                summary.add_scalar('correctness_'+str(params['res'])+'_'+str(3), c3)
-                summary.add_scalar('correctness_'+str(params['res'])+'_'+str(5), c5)
-                summary.add_scalar('mscore' + str(params['res']), mscore)
+        printcolor('Evaluating for {} -- top_k {}'.format(params['res'], params['top_k']))
+        rep, loc, c1, c3, c5, mscore = evaluate_keypoint_net(data_loader,
+                                                            model_submodule(model).keypoint_net,
+                                                            output_shape=params['res'],
+                                                            top_k=params['top_k'],
+                                                            use_color=use_color)
+        if summary:
+            summary.add_scalar('repeatability_'+str(params['res']), rep)
+            summary.add_scalar('localization_' + str(params['res']), loc)
+            summary.add_scalar('correctness_'+str(params['res'])+'_'+str(1), c1)
+            summary.add_scalar('correctness_'+str(params['res'])+'_'+str(3), c3)
+            summary.add_scalar('correctness_'+str(params['res'])+'_'+str(5), c5)
+            summary.add_scalar('mscore' + str(params['res']), mscore)
 
-            print('Repeatability {0:.3f}'.format(rep))
-            print('Localization Error {0:.3f}'.format(loc))
-            print('Correctness d1 {:.3f}'.format(c1))
-            print('Correctness d3 {:.3f}'.format(c3))
-            print('Correctness d5 {:.3f}'.format(c5))
-            print('MScore {:.3f}'.format(mscore))
+        print('Repeatability {0:.3f}'.format(rep))
+        print('Localization Error {0:.3f}'.format(loc))
+        print('Correctness d1 {:.3f}'.format(c1))
+        print('Correctness d3 {:.3f}'.format(c3))
+        print('Correctness d5 {:.3f}'.format(c5))
+        print('MScore {:.3f}'.format(mscore))
 
     # Save checkpoint
-    if config.model.save_checkpoint and rank() == 0:
+    if config.model.save_checkpoint:
         current_model_path = os.path.join(config.model.checkpoint_path, 'model.ckpt')
         printcolor('\nSaving model (epoch:{}) at {}'.format(completed_epoch, current_model_path), 'green')
         torch.save(
@@ -201,10 +185,10 @@ def train(config, train_loader, model, optimizer, epoch, summary):
 
     pbar = tqdm(enumerate(train_loader, 0),
                 unit=' images',
-                unit_scale=config.datasets.train.batch_size * hvd.size(),
+                unit_scale=config.datasets.train.batch_size,
                 total=len(train_loader),
                 smoothing=0,
-                disable=(hvd.rank() > 0))
+                disable=False)
     running_loss = running_recall = grad_norm_disp = grad_norm_pose = grad_norm_keypoint = 0.0
     train_progress = float(epoch) / float(config.arch.epochs)
 
@@ -216,7 +200,6 @@ def train(config, train_loader, model, optimizer, epoch, summary):
         optimizer.zero_grad()
         data_cuda = sample_to_cuda(data)
         loss, recall = model(data_cuda)
-        loss = hvd.allreduce(loss.mean(), average=True, name='loss')
 
         # compute gradient
         loss.backward()
@@ -227,10 +210,9 @@ def train(config, train_loader, model, optimizer, epoch, summary):
         # SGD step
         optimizer.step()
         # pretty progress bar
-        if hvd.rank() == 0:
-            pbar.set_description('Train [ E {}, T {:d}, R {:.4f}, R_Avg {:.4f}, L {:.4f}, L_Avg {:.4f}]'.format(
-                epoch, epoch * config.datasets.train.repeat, recall, running_recall / (i + 1), float(loss),
-                float(running_loss) / (i + 1)))
+        pbar.set_description('Train [ E {}, T {:d}, R {:.4f}, R_Avg {:.4f}, L {:.4f}, L_Avg {:.4f}]'.format(
+            epoch, epoch * config.datasets.train.repeat, recall, running_recall / (i + 1), float(loss),
+            float(running_loss) / (i + 1)))
 
         i += 1
         if i % log_freq == 0:
