@@ -19,9 +19,10 @@ wandb:
     project: ""
 datasets:
     train:
-        path: "D:/MachineLearning/SonarData/SonarDataSets/Simulated/GrateIsolatedFullScan"
+        path: "../Dataset/SonarDataSets/Simulated/GrateSceneRoundTrip"
         num_workers: 16
     val:
-        path: "D:/PycharmProjects/KP2D/data/datasets/kp2d/HPatches"
+        path: "../Dataset/HPatches/hpatches-sequences-release/
+"
 
 
