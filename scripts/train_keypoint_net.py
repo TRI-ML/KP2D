@@ -19,7 +19,7 @@ from kp2d.utils.logging import SummaryWriter, printcolor
 from train_keypoint_net_utils import (_set_seeds, sample_to_cuda,
                                       setup_datasets_and_dataloaders)
 
-
+torch.autograd.set_detect_anomaly(True)
 def parse_args():
     """Parse arguments for training script"""
     parser = argparse.ArgumentParser(description='KP2D training script')
