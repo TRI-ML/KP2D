@@ -8,7 +8,7 @@
 
 model:
     params:
-        use_color: False
+        use_color: True
         with_io: True
         do_upsample: True
         do_cross: True
