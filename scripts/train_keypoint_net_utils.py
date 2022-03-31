@@ -82,5 +82,6 @@ def setup_datasets_and_dataloaders(config):
                               shuffle=not (world_size() > 1),
                               num_workers=config.train.num_workers,
                               worker_init_fn=_worker_init_fn,
-                              sampler=sampler)
+                              sampler=sampler,
+                              drop_last=True)
     return train_dataset, train_loader

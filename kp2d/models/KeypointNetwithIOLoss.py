@@ -230,7 +230,6 @@ class KeypointNetwithIOLoss(torch.nn.Module):
 
             B, _, H, W = data['image'].shape
             device = data['image'].device
-            print(data['image'].shape)
 
             input_img = data['image']
             input_img_aug = data['image_aug']
