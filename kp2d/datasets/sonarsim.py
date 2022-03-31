@@ -32,15 +32,14 @@ class SonarSimLoader(Dataset):
         return len(self.files)
 
     def _read_gray_file(self, filename):
-        return Image.open(filename).convert('L')
+        return Image.open(filename)
 
     def __getitem__(self, idx):
 
         filename = self.files[idx]
         image = self._read_gray_file(filename)
-        image_new = Image.new("RGB", image.size)
-        image_new.paste(image)
-        sample = {'image': image_new, 'idx': idx}
+
+        sample = {'image': image, 'idx': idx}
 
 
         if self.data_transform:
