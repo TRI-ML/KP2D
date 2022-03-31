@@ -23,7 +23,6 @@ datasets:
         path: "../Dataset/SonarDataSets/Simulated/GrateSceneRoundTrip"
         num_workers: 16
     val:
-        path: "../Dataset/HPatches/hpatches-sequences-release/
-"
+        path: "../Dataset/HPatches/hpatches-sequences-release/"
 
 
