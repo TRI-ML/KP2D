@@ -226,105 +226,102 @@ class KeypointNetwithIOLoss(torch.nn.Module):
 
         loss_2d = 0
 
-        if self.training:
 
-            B, _, H, W = data['image'].shape
-            device = data['image'].device
+        B, _, H, W = data['image'].shape
+        device = data['image'].device
 
-            recall_2d = 0
-            inlier_cnt = 0
+        recall_2d = 0
+        inlier_cnt = 0
 
-            input_img = data['image']
-            input_img_aug = data['image_aug']
-            homography = data['homography']
+        input_img = data['image']
+        input_img_aug = data['image_aug']
+        homography = data['homography']
 
-            input_img = to_color_normalized(input_img.clone())
-            input_img_aug = to_color_normalized(input_img_aug.clone())
+        input_img = to_color_normalized(input_img.clone())
+        input_img_aug = to_color_normalized(input_img_aug.clone())
 
-            # Get network outputs
-            source_score, source_uv_pred, source_feat = self.keypoint_net(input_img_aug)
-            target_score, target_uv_pred, target_feat = self.keypoint_net(input_img)
-            _, _, Hc, Wc = target_score.shape
+        # Get network outputs
+        source_score, source_uv_pred, source_feat = self.keypoint_net(input_img_aug)
+        target_score, target_uv_pred, target_feat = self.keypoint_net(input_img)
+        _, _, Hc, Wc = target_score.shape
 
-            # Normalize uv coordinates
-            # TODO: Have a function for the norm and de-norm of 2d coordinate.
-            target_uv_norm = _normalize_uv_coordinates(target_uv_pred, H,W)
+        # Normalize uv coordinates
+        # TODO: Have a function for the norm and de-norm of 2d coordinate.
+        target_uv_norm = _normalize_uv_coordinates(target_uv_pred, H,W)
 
-            source_uv_norm = _normalize_uv_coordinates(source_uv_pred, H,W)
-
-
-            source_uv_warped_norm = warp_homography_batch(source_uv_norm, homography)
-            source_uv_warped = _denormalize_uv_coordinates(source_uv_warped_norm, H, W)
-
-            # Border mask
-            border_mask = _create_Border_Mask(B, Hc, Wc)
-            border_mask = border_mask.gt(1e-3).to(device)
-
-            d_uv_mat_abs = torch.abs(source_uv_warped.view(B,2,-1).unsqueeze(3) - target_uv_pred.view(B,2,-1).unsqueeze(2))
-            d_uv_l2_mat = torch.norm(d_uv_mat_abs, p=2, dim=1)
-            d_uv_l2_min, d_uv_l2_min_index = d_uv_l2_mat.min(dim=2)
-
-            dist_norm_valid_mask = d_uv_l2_min.lt(4) & border_mask.view(B,Hc*Wc)
-
-            # Keypoint loss
-            loc_loss = d_uv_l2_min[dist_norm_valid_mask].mean()
-            loss_2d += self.keypoint_loss_weight * loc_loss.mean()
-
-            #Desc Head Loss, per-pixel level triplet loss from https://arxiv.org/pdf/1902.11046.pdf.
-            if self.descriptor_loss:
-                metric_loss, recall_2d = build_descriptor_loss(source_feat, target_feat, source_uv_norm.detach(), source_uv_warped_norm.detach(), source_uv_warped, keypoint_mask=border_mask, relax_field=self.relax_field)
-                loss_2d += self.descriptor_loss_weight * metric_loss * 2
-            else:
-                _, recall_2d = build_descriptor_loss(source_feat, target_feat, source_uv_norm, source_uv_warped_norm, source_uv_warped, keypoint_mask=border_mask, relax_field=self.relax_field, eval_only=True)
-
-            #Score Head Loss
-            target_score_associated = target_score.view(B,Hc*Wc).gather(1, d_uv_l2_min_index).view(B,Hc,Wc).unsqueeze(1)
-            dist_norm_valid_mask = dist_norm_valid_mask.view(B,Hc,Wc).unsqueeze(1) & border_mask.unsqueeze(1)
-            d_uv_l2_min = d_uv_l2_min.view(B,Hc,Wc).unsqueeze(1)
-            loc_err = d_uv_l2_min[dist_norm_valid_mask]
-
-            usp_loss = (target_score_associated[dist_norm_valid_mask] + source_score[dist_norm_valid_mask]) * (loc_err - loc_err.mean())
-            loss_2d += self.score_loss_weight * usp_loss.mean()
-
-            target_score_resampled = torch.nn.functional.grid_sample(target_score, source_uv_warped_norm.detach(), mode='bilinear', align_corners=True)
-
-            loss_2d += self.score_loss_weight * torch.nn.functional.mse_loss(target_score_resampled[border_mask.unsqueeze(1)],
-                                                                                source_score[border_mask.unsqueeze(1)]).mean() * 2
-            if self.with_io:
-                # Compute IO loss
-                io_loss = self._compute_io_loss(source_score,source_feat,target_feat, target_score,
-                         B, Hc, Wc, H, W,
-                         source_uv_norm, target_uv_norm, source_uv_warped_norm,
-                         device)
-
-                loss_2d += self.keypoint_loss_weight * io_loss
+        source_uv_norm = _normalize_uv_coordinates(source_uv_pred, H,W)
 
 
-            if debug and torch.cuda.current_device() == 0:
-                # Generate visualization data
-                vis_ori = (input_img[0].permute(1, 2, 0).detach().cpu().clone().squeeze() )
-                vis_ori -= vis_ori.min()
-                vis_ori /= vis_ori.max()
-                vis_ori = (vis_ori* 255).numpy().astype(np.uint8)
+        source_uv_warped_norm = warp_homography_batch(source_uv_norm, homography)
+        source_uv_warped = _denormalize_uv_coordinates(source_uv_warped_norm, H, W)
 
-                if self.use_color is False:
-                    vis_ori = cv2.cvtColor(vis_ori, cv2.COLOR_GRAY2BGR)
+        # Border mask
+        border_mask = _create_Border_Mask(B, Hc, Wc)
+        border_mask = border_mask.gt(1e-3).to(device)
 
-                _, top_k = target_score.view(B,-1).topk(self.top_k2, dim=1) #JT: Target frame keypoints
-                vis_ori = draw_keypoints(vis_ori, target_uv_pred.view(B,2,-1)[:,:,top_k[0].squeeze()],(0,0,255))
+        d_uv_l2_min, d_uv_l2_min_index = _min_l2_norm(source_uv_warped, target_uv_pred, B)
 
-                _, top_k = source_score.view(B,-1).topk(self.top_k2, dim=1) #JT: Warped Source frame keypoints
-                vis_ori = draw_keypoints(vis_ori, source_uv_warped.view(B,2,-1)[:,:,top_k[0].squeeze()],(255,0,255))
+        dist_norm_valid_mask = d_uv_l2_min.lt(4) & border_mask.view(B,Hc*Wc)
 
-                cm = get_cmap('plasma')
-                heatmap = target_score[0].detach().cpu().clone().numpy().squeeze()
-                heatmap -= heatmap.min()
-                heatmap /= heatmap.max()
-                heatmap = cv2.resize(heatmap, (W, H))
-                heatmap = cm(heatmap)[:, :, :3]
+        # Keypoint loss
+        loc_loss = d_uv_l2_min[dist_norm_valid_mask].mean()
+        loss_2d += self.keypoint_loss_weight * loc_loss.mean()
 
-                self.vis['img_ori'] = np.clip(vis_ori, 0, 255) / 255.
-                self.vis['heatmap'] = np.clip(heatmap * 255, 0, 255) / 255.
+        #Desc Head Loss, per-pixel level triplet loss from https://arxiv.org/pdf/1902.11046.pdf.
+        if self.descriptor_loss:
+            metric_loss, recall_2d = build_descriptor_loss(source_feat, target_feat, source_uv_norm.detach(), source_uv_warped_norm.detach(), source_uv_warped, keypoint_mask=border_mask, relax_field=self.relax_field)
+            loss_2d += self.descriptor_loss_weight * metric_loss * 2
+        else:
+            _, recall_2d = build_descriptor_loss(source_feat, target_feat, source_uv_norm, source_uv_warped_norm, source_uv_warped, keypoint_mask=border_mask, relax_field=self.relax_field, eval_only=True)
+
+        #Score Head Loss
+        target_score_associated = target_score.view(B,Hc*Wc).gather(1, d_uv_l2_min_index).view(B,Hc,Wc).unsqueeze(1)
+        dist_norm_valid_mask = dist_norm_valid_mask.view(B,Hc,Wc).unsqueeze(1) & border_mask.unsqueeze(1)
+        d_uv_l2_min = d_uv_l2_min.view(B,Hc,Wc).unsqueeze(1)
+        loc_err = d_uv_l2_min[dist_norm_valid_mask]
+
+        usp_loss = (target_score_associated[dist_norm_valid_mask] + source_score[dist_norm_valid_mask]) * (loc_err - loc_err.mean())
+        loss_2d += self.score_loss_weight * usp_loss.mean()
+
+        target_score_resampled = torch.nn.functional.grid_sample(target_score, source_uv_warped_norm.detach(), mode='bilinear', align_corners=True)
+
+        loss_2d += self.score_loss_weight * torch.nn.functional.mse_loss(target_score_resampled[border_mask.unsqueeze(1)],
+                                                                            source_score[border_mask.unsqueeze(1)]).mean() * 2
+        if self.with_io:
+            # Compute IO loss
+            io_loss = self._compute_io_loss(source_score,source_feat,target_feat, target_score,
+                     B, Hc, Wc, H, W,
+                     source_uv_norm, target_uv_norm, source_uv_warped_norm,
+                     device)
+
+            loss_2d += self.keypoint_loss_weight * io_loss
+
+
+        if debug and torch.cuda.current_device() == 0:
+            # Generate visualization data
+            vis_ori = (input_img[0].permute(1, 2, 0).detach().cpu().clone().squeeze() )
+            vis_ori -= vis_ori.min()
+            vis_ori /= vis_ori.max()
+            vis_ori = (vis_ori* 255).numpy().astype(np.uint8)
+
+            if self.use_color is False:
+                vis_ori = cv2.cvtColor(vis_ori, cv2.COLOR_GRAY2BGR)
+
+            _, top_k = target_score.view(B,-1).topk(self.top_k2, dim=1) #JT: Target frame keypoints
+            vis_ori = draw_keypoints(vis_ori, target_uv_pred.view(B,2,-1)[:,:,top_k[0].squeeze()],(0,0,255))
+
+            _, top_k = source_score.view(B,-1).topk(self.top_k2, dim=1) #JT: Warped Source frame keypoints
+            vis_ori = draw_keypoints(vis_ori, source_uv_warped.view(B,2,-1)[:,:,top_k[0].squeeze()],(255,0,255))
+
+            cm = get_cmap('plasma')
+            heatmap = target_score[0].detach().cpu().clone().numpy().squeeze()
+            heatmap -= heatmap.min()
+            heatmap /= heatmap.max()
+            heatmap = cv2.resize(heatmap, (W, H))
+            heatmap = cm(heatmap)[:, :, :3]
+
+            self.vis['img_ori'] = np.clip(vis_ori, 0, 255) / 255.
+            self.vis['heatmap'] = np.clip(heatmap * 255, 0, 255) / 255.
 
         return loss_2d, recall_2d
 
@@ -404,3 +401,8 @@ def _create_Border_Mask(B, Hc, Wc):
     border_mask_ori[:, :, 0] = 0
     border_mask_ori[:, :, Wc - 1] = 0
     return border_mask_ori
+
+def _min_l2_norm(source_uv_warped, target_uv_pred, B):
+    d_uv_mat_abs = torch.abs(source_uv_warped.view(B, 2, -1).unsqueeze(3) - target_uv_pred.view(B, 2, -1).unsqueeze(2))
+    d_uv_l2_mat = torch.norm(d_uv_mat_abs, p=2, dim=1)
+    return d_uv_l2_mat.min(dim=2)
