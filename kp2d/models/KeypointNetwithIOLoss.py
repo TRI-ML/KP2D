@@ -248,41 +248,17 @@ class KeypointNetwithIOLoss(torch.nn.Module):
 
             # Normalize uv coordinates
             # TODO: Have a function for the norm and de-norm of 2d coordinate.
-            target_uv_norm = target_uv_pred.clone()
-            target_uv_norm[:,0] = (target_uv_norm[:,0] / (float(W-1)/2.)) - 1.
-            target_uv_norm[:,1] = (target_uv_norm[:,1] / (float(H-1)/2.)) - 1.
-            target_uv_norm = target_uv_norm.permute(0, 2, 3, 1)
+            target_uv_norm = _normalize_uv_coordinates(target_uv_pred, H,W)
 
-            source_uv_norm = source_uv_pred.clone()
-            source_uv_norm[:,0] = (source_uv_norm[:,0] / (float(W-1)/2.)) - 1.
-            source_uv_norm[:,1] = (source_uv_norm[:,1] / (float(H-1)/2.)) - 1.
-            source_uv_norm = source_uv_norm.permute(0, 2, 3, 1)
+            source_uv_norm = _normalize_uv_coordinates(source_uv_pred, H,W)
+
 
             source_uv_warped_norm = warp_homography_batch(source_uv_norm, homography)
-            source_uv_warped = source_uv_warped_norm.clone()
-
-            source_uv_warped[:,:,:,0] = (source_uv_warped[:,:,:,0] + 1) * (float(W-1)/2.)
-            source_uv_warped[:,:,:,1] = (source_uv_warped[:,:,:,1] + 1) * (float(H-1)/2.)
-            source_uv_warped = source_uv_warped.permute(0, 3, 1, 2)
-
-            target_uv_resampled = torch.nn.functional.grid_sample(target_uv_pred, source_uv_warped_norm, mode='nearest', align_corners=True)
-
-            target_uv_resampled_norm = target_uv_resampled.clone()
-            target_uv_resampled_norm[:,0] = (target_uv_resampled_norm[:,0] / (float(W-1)/2.)) - 1.
-            target_uv_resampled_norm[:,1] = (target_uv_resampled_norm[:,1] / (float(H-1)/2.)) - 1.
-            target_uv_resampled_norm = target_uv_resampled_norm.permute(0, 2, 3, 1)
+            source_uv_warped = _denormalize_uv_coordinates(source_uv_warped_norm, H, W)
 
             # Border mask
-            border_mask_ori = torch.ones(B,Hc,Wc)
-            border_mask_ori[:,0] = 0
-            border_mask_ori[:,Hc-1] = 0
-            border_mask_ori[:,:,0] = 0
-            border_mask_ori[:,:,Wc-1] = 0
-            border_mask_ori = border_mask_ori.gt(1e-3).to(device)
-
-            # Out-of-bourder(OOB) mask. Not nessesary in our case, since it's prevented at HA procedure already. Kept here for future usage.
-            oob_mask2 = source_uv_warped_norm[:,:,:,0].lt(1) & source_uv_warped_norm[:,:,:,0].gt(-1) & source_uv_warped_norm[:,:,:,1].lt(1) & source_uv_warped_norm[:,:,:,1].gt(-1)
-            border_mask = border_mask_ori & oob_mask2
+            border_mask = _create_Border_Mask(B, Hc, Wc)
+            border_mask = border_mask.gt(1e-3).to(device)
 
             d_uv_mat_abs = torch.abs(source_uv_warped.view(B,2,-1).unsqueeze(3) - target_uv_pred.view(B,2,-1).unsqueeze(2))
             d_uv_l2_mat = torch.norm(d_uv_mat_abs, p=2, dim=1)
@@ -316,53 +292,12 @@ class KeypointNetwithIOLoss(torch.nn.Module):
                                                                                 source_score[border_mask.unsqueeze(1)]).mean() * 2
             if self.with_io:
                 # Compute IO loss
-                top_k_score1, top_k_indice1 = source_score.view(B,Hc*Wc).topk(self.top_k2, dim=1, largest=False)
-                top_k_mask1 = torch.zeros(B, Hc * Wc).to(device)
-                top_k_mask1.scatter_(1, top_k_indice1, value=1)
-                top_k_mask1 = top_k_mask1.gt(1e-3).view(B,Hc,Wc)
+                io_loss = self._compute_io_loss(source_score,source_feat,target_feat, target_score,
+                         B, Hc, Wc, H, W,
+                         source_uv_norm, target_uv_norm, source_uv_warped_norm,
+                         device)
 
-                top_k_score2, top_k_indice2 = target_score.view(B,Hc*Wc).topk(self.top_k2, dim=1, largest=False)
-                top_k_mask2 = torch.zeros(B, Hc * Wc).to(device)
-                top_k_mask2.scatter_(1, top_k_indice2, value=1)
-                top_k_mask2 = top_k_mask2.gt(1e-3).view(B,Hc,Wc)
-
-                source_uv_norm_topk = source_uv_norm[top_k_mask1].view(B, self.top_k2, 2)
-                target_uv_norm_topk = target_uv_norm[top_k_mask2].view(B, self.top_k2, 2)
-                source_uv_warped_norm_topk = source_uv_warped_norm[top_k_mask1].view(B, self.top_k2, 2)
-
-                source_feat_topk = torch.nn.functional.grid_sample(source_feat, source_uv_norm_topk.unsqueeze(1), align_corners=True).squeeze()
-                target_feat_topk = torch.nn.functional.grid_sample(target_feat, target_uv_norm_topk.unsqueeze(1), align_corners=True).squeeze()
-
-                source_feat_topk = source_feat_topk.div(torch.norm(source_feat_topk, p=2, dim=1).unsqueeze(1))
-                target_feat_topk = target_feat_topk.div(torch.norm(target_feat_topk, p=2, dim=1).unsqueeze(1))
-
-                dmat = torch.bmm(source_feat_topk.permute(0,2,1), target_feat_topk)
-                dmat = torch.sqrt(2 - 2 * torch.clamp(dmat, min=-1, max=1))
-                dmat_soft_min = torch.sum(dmat* dmat.mul(-1).softmax(dim=2), dim=2)
-                dmat_min, dmat_min_indice = torch.min(dmat, dim=2)
-
-                target_uv_norm_topk_associated = target_uv_norm_topk.gather(1, dmat_min_indice.unsqueeze(2).repeat(1,1,2))
-                point_pair = torch.cat([source_uv_norm_topk, target_uv_norm_topk_associated, dmat_min.unsqueeze(2)], 2)
-
-                inlier_pred = self.io_net(point_pair.permute(0,2,1).unsqueeze(3)).squeeze()
-
-                target_uv_norm_topk_associated_raw = target_uv_norm_topk_associated.clone()
-                target_uv_norm_topk_associated_raw[:,:,0] = (target_uv_norm_topk_associated_raw[:,:,0] + 1) * (float(W-1)/2.)
-                target_uv_norm_topk_associated_raw[:,:,1] = (target_uv_norm_topk_associated_raw[:,:,1] + 1) * (float(H-1)/2.)
-
-                source_uv_warped_norm_topk_raw = source_uv_warped_norm_topk.clone()
-                source_uv_warped_norm_topk_raw[:,:,0] = (source_uv_warped_norm_topk_raw[:,:,0] + 1) * (float(W-1)/2.)
-                source_uv_warped_norm_topk_raw[:,:,1] = (source_uv_warped_norm_topk_raw[:,:,1] + 1) * (float(H-1)/2.)
-
-
-                matching_score = torch.norm(target_uv_norm_topk_associated_raw - source_uv_warped_norm_topk_raw, p=2, dim=2)
-                inlier_mask = matching_score.lt(4)
-                inlier_gt = 2 * inlier_mask.float() - 1
-
-                if inlier_mask.sum() > 10:
-
-                    io_loss = torch.nn.functional.mse_loss(inlier_pred, inlier_gt)
-                    loss_2d += self.keypoint_loss_weight * io_loss
+                loss_2d += self.keypoint_loss_weight * io_loss
 
 
             if debug and torch.cuda.current_device() == 0:
@@ -392,3 +327,80 @@ class KeypointNetwithIOLoss(torch.nn.Module):
                 self.vis['heatmap'] = np.clip(heatmap * 255, 0, 255) / 255.
 
         return loss_2d, recall_2d
+
+    def _compute_io_loss(self, source_score,source_feat,target_feat, target_score,
+                         B, Hc, Wc, H, W,
+                         source_uv_norm, target_uv_norm, source_uv_warped_norm,
+                         device):
+        top_k_score1, top_k_indice1 = source_score.view(B, Hc * Wc).topk(self.top_k2, dim=1, largest=False)
+        top_k_mask1 = torch.zeros(B, Hc * Wc).to(device)
+        top_k_mask1.scatter_(1, top_k_indice1, value=1)
+        top_k_mask1 = top_k_mask1.gt(1e-3).view(B, Hc, Wc)
+
+        top_k_score2, top_k_indice2 = target_score.view(B, Hc * Wc).topk(self.top_k2, dim=1, largest=False)
+        top_k_mask2 = torch.zeros(B, Hc * Wc).to(device)
+        top_k_mask2.scatter_(1, top_k_indice2, value=1)
+        top_k_mask2 = top_k_mask2.gt(1e-3).view(B, Hc, Wc)
+
+        source_uv_norm_topk = source_uv_norm[top_k_mask1].view(B, self.top_k2, 2)
+        target_uv_norm_topk = target_uv_norm[top_k_mask2].view(B, self.top_k2, 2)
+        source_uv_warped_norm_topk = source_uv_warped_norm[top_k_mask1].view(B, self.top_k2, 2)
+
+        source_feat_topk = torch.nn.functional.grid_sample(source_feat, source_uv_norm_topk.unsqueeze(1),
+                                                           align_corners=True).squeeze()
+        target_feat_topk = torch.nn.functional.grid_sample(target_feat, target_uv_norm_topk.unsqueeze(1),
+                                                           align_corners=True).squeeze()
+
+        source_feat_topk = source_feat_topk.div(torch.norm(source_feat_topk, p=2, dim=1).unsqueeze(1))
+        target_feat_topk = target_feat_topk.div(torch.norm(target_feat_topk, p=2, dim=1).unsqueeze(1))
+
+        dmat = torch.bmm(source_feat_topk.permute(0, 2, 1), target_feat_topk)
+        dmat = torch.sqrt(2 - 2 * torch.clamp(dmat, min=-1, max=1))
+        dmat_min, dmat_min_indice = torch.min(dmat, dim=2)
+
+        target_uv_norm_topk_associated = target_uv_norm_topk.gather(1, dmat_min_indice.unsqueeze(2).repeat(1, 1, 2))
+        point_pair = torch.cat([source_uv_norm_topk, target_uv_norm_topk_associated, dmat_min.unsqueeze(2)], 2)
+
+        inlier_pred = self.io_net(point_pair.permute(0, 2, 1).unsqueeze(3)).squeeze()
+
+        target_uv_norm_topk_associated_raw = target_uv_norm_topk_associated.clone()
+        target_uv_norm_topk_associated_raw[:, :, 0] = (target_uv_norm_topk_associated_raw[:, :, 0] + 1) * (
+                    float(W - 1) / 2.)
+        target_uv_norm_topk_associated_raw[:, :, 1] = (target_uv_norm_topk_associated_raw[:, :, 1] + 1) * (
+                    float(H - 1) / 2.)
+
+        source_uv_warped_norm_topk_raw = source_uv_warped_norm_topk.clone()
+        source_uv_warped_norm_topk_raw[:, :, 0] = (source_uv_warped_norm_topk_raw[:, :, 0] + 1) * (float(W - 1) / 2.)
+        source_uv_warped_norm_topk_raw[:, :, 1] = (source_uv_warped_norm_topk_raw[:, :, 1] + 1) * (float(H - 1) / 2.)
+
+        matching_score = torch.norm(target_uv_norm_topk_associated_raw - source_uv_warped_norm_topk_raw, p=2, dim=2)
+        inlier_mask = matching_score.lt(4)
+        inlier_gt = 2 * inlier_mask.float() - 1
+
+        if inlier_mask.sum() > 10:
+            return torch.nn.functional.mse_loss(inlier_pred, inlier_gt)
+        else:
+            return 0
+
+
+def _normalize_uv_coordinates(uv_pred, H, W):
+    uv_norm = uv_pred.clone()
+    uv_norm[:, 0] = (uv_norm[:, 0] / (float(W - 1) / 2.)) - 1.
+    uv_norm[:, 1] = (uv_norm[:, 1] / (float(H - 1) / 2.)) - 1.
+    uv_norm = uv_norm.permute(0, 2, 3, 1)
+    return uv_norm
+
+def _denormalize_uv_coordinates(uv_norm, H, W):
+    uv_pred = uv_norm.clone()
+    uv_pred[:, :, :, 0] = (uv_pred[:, :, :, 0] + 1) * (float(W - 1) / 2.)
+    uv_pred[:, :, :, 1] = (uv_pred[:, :, :, 1] + 1) * (float(H - 1) / 2.)
+    uv_pred = uv_pred.permute(0, 3, 1, 2)
+    return uv_pred
+
+def _create_Border_Mask(B, Hc, Wc):
+    border_mask_ori = torch.ones(B, Hc, Wc)
+    border_mask_ori[:, 0] = 0
+    border_mask_ori[:, Hc - 1] = 0
+    border_mask_ori[:, :, 0] = 0
+    border_mask_ori[:, :, Wc - 1] = 0
+    return border_mask_ori
