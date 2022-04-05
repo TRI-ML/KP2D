@@ -37,7 +37,7 @@ def build_descriptor_loss(source_des, target_des, source_points, tar_points, tar
     recall: torch.Tensor
         Descriptor match recall.
     """
-    device = source_des.device
+
     batch_size, C, _, _ = source_des.shape
     loss, recall = 0., 0.
     margins = 0.2
@@ -226,7 +226,6 @@ class KeypointNetwithIOLoss(torch.nn.Module):
 
         loss_2d = 0
 
-
         B, _, H, W = data['image'].shape
         device = data['image'].device
 
@@ -247,9 +246,8 @@ class KeypointNetwithIOLoss(torch.nn.Module):
 
         # Normalize uv coordinates
         # TODO: Have a function for the norm and de-norm of 2d coordinate.
-        target_uv_norm = _normalize_uv_coordinates(target_uv_pred, H,W)
-
-        source_uv_norm = _normalize_uv_coordinates(source_uv_pred, H,W)
+        target_uv_norm = _normalize_uv_coordinates(target_uv_pred, H, W)
+        source_uv_norm = _normalize_uv_coordinates(source_uv_pred, H, W)
 
 
         source_uv_warped_norm = warp_homography_batch(source_uv_norm, homography)
@@ -260,7 +258,6 @@ class KeypointNetwithIOLoss(torch.nn.Module):
         border_mask = border_mask.gt(1e-3).to(device)
 
         d_uv_l2_min, d_uv_l2_min_index = _min_l2_norm(source_uv_warped, target_uv_pred, B)
-
         dist_norm_valid_mask = d_uv_l2_min.lt(4) & border_mask.view(B,Hc*Wc)
 
         # Keypoint loss
