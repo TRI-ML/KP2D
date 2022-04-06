@@ -13,7 +13,6 @@ from kp2d.datasets.augmentations import (ha_augment_sample, resize_sample,
                                          to_tensor_sample)
 from kp2d.datasets.coco import COCOLoader
 from kp2d.datasets.sonarsim import SonarSimLoader
-from kp2d.utils.horovod import rank, world_size
 
 
 def sample_to_cuda(data):
@@ -70,16 +69,13 @@ def setup_datasets_and_dataloaders(config):
         train_dataset = ConcatDataset([train_dataset for _ in range(config.train.repeat)])
 
     # Create loaders
-    if world_size() > 1:
-        sampler = torch.utils.data.distributed.DistributedSampler(
-            train_dataset, num_replicas=world_size(), rank=rank())
-    else:
-        sampler = None
+
+    sampler = None
 
     train_loader = DataLoader(train_dataset,
                               batch_size=config.train.batch_size,
                               pin_memory=True,
-                              shuffle=not (world_size() > 1),
+                              shuffle=True,
                               num_workers=config.train.num_workers,
                               worker_init_fn=_worker_init_fn,
                               sampler=sampler,
