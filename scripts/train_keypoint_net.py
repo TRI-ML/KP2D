@@ -181,8 +181,6 @@ def train(config, train_loader, model, optimizer, epoch, summary):
     # if args.adjust_lr:
     adjust_learning_rate(config, optimizer, epoch)
 
-    n_train_batches = len(train_loader)
-
     pbar = tqdm(enumerate(train_loader, 0),
                 unit=' images',
                 unit_scale=config.datasets.train.batch_size,

@@ -245,10 +245,8 @@ class KeypointNetwithIOLoss(torch.nn.Module):
         _, _, Hc, Wc = target_score.shape
 
         # Normalize uv coordinates
-        # TODO: Have a function for the norm and de-norm of 2d coordinate.
         target_uv_norm = _normalize_uv_coordinates(target_uv_pred, H, W)
         source_uv_norm = _normalize_uv_coordinates(source_uv_pred, H, W)
-
 
         source_uv_warped_norm = warp_homography_batch(source_uv_norm, homography)
         source_uv_warped = _denormalize_uv_coordinates(source_uv_warped_norm, H, W)
@@ -371,10 +369,8 @@ class KeypointNetwithIOLoss(torch.nn.Module):
         inlier_mask = matching_score.lt(4)
         inlier_gt = 2 * inlier_mask.float() - 1
 
-        if inlier_mask.sum() > 10:
-            return torch.nn.functional.mse_loss(inlier_pred, inlier_gt)
-        else:
-            return 0
+        return int(inlier_mask.sum() > 10 )*torch.nn.functional.mse_loss(inlier_pred, inlier_gt)
+
 
 
 def _normalize_uv_coordinates(uv_pred, H, W):

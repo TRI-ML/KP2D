@@ -45,7 +45,9 @@ def main():
                                 do_cross=model_args['do_cross'])
     else:
         keypoint_net = KeypointResnet()
-
+    keypoint_net = KeypointNet(use_color=model_args['use_color'],
+                               do_upsample=model_args['do_upsample'],
+                               do_cross=model_args['do_cross'])
     keypoint_net.load_state_dict(checkpoint['state_dict'])
     keypoint_net = keypoint_net.cuda()
     keypoint_net.eval()
