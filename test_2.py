@@ -1,9 +1,9 @@
 import torch
 from kp2d.networks.keypoint_net import KeypointNet
 import cv2
-
+import numpy as np
 import kp2d.datasets.augmentations as aug
-from kp2d.utils.keypoints import draw_keypoints
+from kp2d.utils.keypoints import draw_keypoints,  warp_keypoints
 import glob
 import kp2d.utils.tt_image as tt
 
@@ -21,7 +21,6 @@ keypoint_net = KeypointNet(use_color=True,
 keypoint_net.load_state_dict(checkpoint['state_dict'])
 keypoint_net = keypoint_net.cuda()
 keypoint_net.eval()
-
 
 
 eval_params = [{'res': (320, 240), 'top_k': 300, }]

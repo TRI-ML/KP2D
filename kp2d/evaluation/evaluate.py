@@ -50,8 +50,8 @@ def evaluate_keypoint_net(data_loader, keypoint_net, output_shape=(320, 240), to
             # Scores & Descriptors
             score_1 = torch.cat([coord_1, score_1], dim=1).view(3, -1).t().cpu().numpy()
             score_2 = torch.cat([coord_2, score_2], dim=1).view(3, -1).t().cpu().numpy()
-            desc1 = desc1.view(C, Hc, Wc).view(C, -1).t().cpu().numpy()
-            desc2 = desc2.view(C, Hc, Wc).view(C, -1).t().cpu().numpy()
+            desc1 = desc1.view(C, -1).t().cpu().numpy()
+            desc2 = desc2.view(C, -1).t().cpu().numpy()
             
             # Filter based on confidence threshold
             desc1 = desc1[score_1[:, 2] > conf_threshold, :]
