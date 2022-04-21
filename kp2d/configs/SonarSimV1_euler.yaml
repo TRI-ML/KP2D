@@ -20,7 +20,7 @@ wandb:
     project: ""
 datasets:
     train:
-        path: "../Dataset/SonarDataSets/Simulated"
+        path: '../../../scratch/rueeggth/dataset/real'
         num_workers: 16
     val:
         path: "../Dataset/HPatches/hpatches-sequences-release/"

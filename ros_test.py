@@ -57,8 +57,21 @@ def load_all_imgs(data_path_extracted):
             images.append(img)
     return np.asarray(images)
 
+def resize_imgs(data_path_extracted):
+
+    for filename in os.listdir(data_path_extracted):
+        img = cv2.imread(os.path.join(data_path_extracted, filename))
+        if img is not None:
+            print(img.shape)
+            if img.shape[1]== 256:
+                size = (img.shape[1]*2,img.shape[0])
+                img = cv2.resize(img,size)
+                print(img.shape)
+                cv2.imwrite(os.path.join(data_path_extracted, filename), img)
+
 #imgs = load_all_imgs(r"D:\MachineLearning\SonarData\SonarDataSets\Real\rosbag2_2022_04_06-11-27_20")
-get_xyz()
+imgs = resize_imgs(r"D:\MachineLearning\SonarData\SonarDataSets\Real\rosbag2_2022_04_06-11-41_16")
+#get_xyz()
 #rosbag_inv(rosbag_path)
 # for i in imgs:
 #     cv2.imshow("minus mean", (i - mean*2)/255.)
