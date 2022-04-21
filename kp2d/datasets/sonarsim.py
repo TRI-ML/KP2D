@@ -39,7 +39,12 @@ class SonarSimLoader(Dataset):
         filename = self.files[idx]
         image = self._read_gray_file(filename)
 
-        sample = {'image': image, 'idx': idx}
+        if image.mode == 'L':
+            image_new = Image.new("RGB", image.size)
+            image_new.paste(image)
+            sample = {'image': image_new, 'idx': idx}
+        else:
+            sample = {'image': image, 'idx': idx}
 
 
         if self.data_transform:
