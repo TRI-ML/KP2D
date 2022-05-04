@@ -12,7 +12,6 @@ from PIL import Image
 
 from kp2d.utils.image import image_grid
 
-
 def filter_dict(dict, keywords):
     """
     Returns only the keywords that are part of a dictionary
@@ -72,8 +71,8 @@ def to_tensor_sample(sample, tensor_type='torch.FloatTensor'):
     sample : dict
         Sample with keys cast as tensors
     """
-    transform = transforms.ToTensor()
-    sample['image'] = transform(sample['image']).type(tensor_type)
+    sample['image'] = torch.from_numpy(sample['image']).type(tensor_type)
+    sample['image_aug'] = torch.from_numpy(sample['image_aug']).type(tensor_type)
     return sample
 
 
@@ -358,3 +357,76 @@ def ha_augment_sample(data, jitter_paramters=[0.5, 0.5, 0.2, 0.05], patch_ratio=
     data['image_aug'] = source_img.squeeze()
     data['homography'] = homography
     return data
+def ha_augment_real_sonar_sample(data, jitter_paramters=[0.5, 0.5, 0.2, 0.05], patch_ratio=0.7, scaling_amplitude=0.2, max_angle=pi/4):
+    """Apply Homography Adaptation image augmentation."""
+    target_img = data['image'].unsqueeze(0)
+    _, _, H, W = target_img.shape
+    device = target_img.device
+
+    # Generate homography (warps source to target)
+    homography = sample_homography([H, W],
+        patch_ratio=patch_ratio,
+        scaling_amplitude=scaling_amplitude,
+        max_angle=0)
+    homography = torch.from_numpy(homography).float().to(device)
+
+    source_grid = image_grid(1, H, W,
+                    dtype=target_img.dtype,
+                    device=device,
+                    ones=False, normalized=True).clone().permute(0, 2, 3, 1)
+
+    source_warped = warp_homography(source_grid, homography)
+    source_img = torch.nn.functional.grid_sample(target_img, source_warped, align_corners=True)
+
+    #TODO: add cone representation do rotation and translation not scaling (implement shear, wavy and trapez) <- probably not working
+
+    #TODO: add some noise
+    color_order = [0,1,2]
+    to_gray = False
+
+    target_img = non_spatial_augmentation(target_img, jitter_paramters=jitter_paramters, color_order=color_order, to_gray=to_gray)
+    source_img = non_spatial_augmentation(source_img, jitter_paramters=jitter_paramters, color_order=color_order, to_gray=to_gray)
+
+    data['image'] = target_img.squeeze()
+    data['image_aug'] = source_img.squeeze()
+    data['homography'] = homography
+    return data
+
+def ha_augment_sonar_sim_sample(data, jitter_paramters=[0.5, 0.5, 0.2, 0.05], patch_ratio=0.7, scaling_amplitude=0.2, max_angle=pi/4):
+    """Apply Homography Adaptation image augmentation."""
+    target_img = data['image'].unsqueeze(0)
+    _, _, H, W = target_img.shape
+    device = target_img.device
+
+    # Generate homography (warps source to target)
+    homography = sample_homography([H, W],
+        patch_ratio=patch_ratio,
+        scaling_amplitude=scaling_amplitude,
+        max_angle=max_angle)
+    homography = torch.from_numpy(homography).float().to(device)
+
+    source_grid = image_grid(1, H, W,
+                    dtype=target_img.dtype,
+                    device=device,
+                    ones=False, normalized=True).clone().permute(0, 2, 3, 1)
+
+    source_warped = warp_homography(source_grid, homography)
+    source_img = torch.nn.functional.grid_sample(target_img, source_warped, align_corners=True)
+
+    #TODO: implement shear, wavy and trapez
+
+    #TODO: add sparkle noise, artifacts, row wise noise, normalization row wise,
+
+    #TODO: Blur
+
+    color_order = [0,1,2]
+    to_gray = False
+
+    target_img = non_spatial_augmentation(target_img, jitter_paramters=jitter_paramters, color_order=color_order, to_gray=to_gray)
+    source_img = non_spatial_augmentation(source_img, jitter_paramters=jitter_paramters, color_order=color_order, to_gray=to_gray)
+
+    data['image'] = target_img.squeeze()
+    data['image_aug'] = source_img.squeeze()
+    data['homography'] = homography
+    return data
+

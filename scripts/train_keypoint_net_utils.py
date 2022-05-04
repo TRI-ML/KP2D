@@ -10,10 +10,13 @@ from torch.utils.data import ConcatDataset, DataLoader
 
 from kp2d.datasets.augmentations import (ha_augment_sample, resize_sample,
                                          spatial_augment_sample,
-                                         to_tensor_sample)
+                                         to_tensor_sample, add_noise)
 from kp2d.datasets.coco import COCOLoader
 from kp2d.datasets.sonarsim import SonarSimLoader
 
+from kp2d.datasets.noise_model import NoiseUtility
+
+noise_util = NoiseUtility((440, 512))
 
 def sample_to_cuda(data):
     if isinstance(data, str):
@@ -34,10 +37,14 @@ def sample_to_cuda(data):
 
 def image_transforms(shape, jittering):
     def train_transforms(sample):
-        sample = resize_sample(sample, image_shape=shape)
-        sample = spatial_augment_sample(sample)
+
+        sample = noise_util.pol_2_cart_sample(sample)
+        sample = noise_util.augment_sample(sample)
+
+        sample = noise_util.filter_sample(sample)
+        sample = noise_util.cart_2_pol_sample(sample)
         sample = to_tensor_sample(sample)
-        sample = ha_augment_sample(sample, jitter_paramters=jittering)
+
         return sample
 
     return {'train': train_transforms}

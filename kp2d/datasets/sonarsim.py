@@ -5,10 +5,10 @@ import glob
 from PIL import Image
 from torch.utils.data import Dataset
 
-
+from kp2d.datasets.noise_model import NoiseUtility
 class SonarSimLoader(Dataset):
     """
-    Coco dataset class.
+    Sonar Simulator dataset class.
 
     Parameters
     ----------
@@ -23,7 +23,7 @@ class SonarSimLoader(Dataset):
         self.root_dir = root_dir
 
         self.files=[]
-
+        self.noise_util = NoiseUtility((440, 512))
         for filename in glob.glob(root_dir + '/**/*.jpg'):
             self.files.append(filename)
         self.data_transform = data_transform
