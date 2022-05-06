@@ -74,10 +74,10 @@ class NoiseUtility():
 
         filtered = filtered + noise
         filtered = add_sparkle(filtered, self.kernel)
-        # filtered = scipy.signal.convolve2d(filtered, self.kernel, boundary='symm', mode='same')
+        filtered = torch.nn.functional.conv2d(filtered, self.kernel, bias=None, stride=[1,1], padding='same')
         #
-        # filtered = add_sparkle(filtered, self.kernel)
-        # filtered = (filtered * 0.75 + img * 0.25)
+        filtered = add_sparkle(filtered, self.kernel)
+        filtered = (filtered * 0.75 + img * 0.25)
         #
         # filtered = np.clip(filtered * (1 + 0.3 * create_speckle_noise(filtered)), 0, 255)
         return filtered
@@ -174,7 +174,7 @@ def create_row_noise(x):
     return noise
 
 def create_speckle_noise(x):
-    noise = np.clip(np.random.normal(20,100,x.shape)-100,0,255)/255.
+    noise = torch.clip(torch.randn(x.shape).to('cuda')*20,0,255)/255.
     return noise
 
 def add_sparkle(x, conv_kernel):
