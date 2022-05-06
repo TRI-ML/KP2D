@@ -79,7 +79,7 @@ class NoiseUtility():
         filtered = add_sparkle(filtered, self.kernel)
         filtered = (filtered * 0.75 + img * 0.25)
         #
-        # filtered = np.clip(filtered * (1 + 0.3 * create_speckle_noise(filtered)), 0, 255)
+        filtered = torch.clip(filtered * (1 + 0.3 * create_speckle_noise(filtered)), 0, 255)
         return filtered
 
     def sim_2_real_filter(self, img):
@@ -174,7 +174,7 @@ def create_row_noise(x):
     return noise
 
 def create_speckle_noise(x):
-    noise = torch.clip(torch.randn(x.shape).to('cuda')*20,0,255)/255.
+    noise = torch.clip(torch.randn(x.shape).to('cuda')*255,-200,255)/255
     return noise
 
 def add_sparkle(x, conv_kernel):
