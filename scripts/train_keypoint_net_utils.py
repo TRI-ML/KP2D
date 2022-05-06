@@ -81,7 +81,7 @@ def setup_datasets_and_dataloaders(config):
 
     train_loader = DataLoader(train_dataset,
                               batch_size=config.train.batch_size,
-                              pin_memory=True,
+                              pin_memory=False, # pin memory on seems to create an error
                               shuffle=True,
                               num_workers=config.train.num_workers,
                               worker_init_fn=_worker_init_fn,

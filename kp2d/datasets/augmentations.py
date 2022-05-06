@@ -71,8 +71,8 @@ def to_tensor_sample(sample, tensor_type='torch.FloatTensor'):
     sample : dict
         Sample with keys cast as tensors
     """
-    sample['image'] = torch.from_numpy(sample['image']).type(tensor_type)
-    sample['image_aug'] = torch.from_numpy(sample['image_aug']).type(tensor_type)
+    sample['image'] = sample['image'].type(tensor_type)
+    sample['image_aug'] = sample['image_aug'].type(tensor_type)
     return sample
 
 
