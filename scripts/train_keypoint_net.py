@@ -19,7 +19,8 @@ from kp2d.utils.logging import SummaryWriter, printcolor
 from train_keypoint_net_utils import (_set_seeds, sample_to_cuda,
                                       setup_datasets_and_dataloaders)
 
-torch.autograd.set_detect_anomaly(True)
+from kp2d.datasets.noise_model import NoiseUtility
+
 def parse_args():
     """Parse arguments for training script"""
     parser = argparse.ArgumentParser(description='KP2D training script')
@@ -66,7 +67,7 @@ def main(file):
     torch.set_num_threads(n_threads)    
     torch.backends.cudnn.benchmark = True
     # torch.backends.cudnn.deterministic = True
-
+    noise_util = NoiseUtility((440,512),fov=config.datasets.augmentation.fov,device=config.device)
 
     printcolor('-'*25 + 'SINGLE GPU ' + '-'*25, 'cyan')
     
@@ -78,7 +79,7 @@ def main(file):
 
     # Setup model and datasets/dataloaders
     model = KeypointNetwithIOLoss(**config.model.params)
-    train_dataset, train_loader = setup_datasets_and_dataloaders(config.datasets)
+    train_dataset, train_loader = setup_datasets_and_dataloaders(config.datasets, noise_util)
     printcolor('({}) length: {}'.format("Train", len(train_dataset)))
 
     model = model.cuda()

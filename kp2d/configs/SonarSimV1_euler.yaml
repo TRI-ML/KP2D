@@ -19,6 +19,10 @@ wandb:
     dry_run: True
     project: ""
 datasets:
+    augmentation:
+        mode: 'sonar_sim'
+        fov: 70
+
     train:
         path: '../../../scratch/rueeggth/dataset/real'
         num_workers: 16

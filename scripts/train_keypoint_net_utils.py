@@ -14,9 +14,8 @@ from kp2d.datasets.augmentations import (ha_augment_sample, resize_sample,
 from kp2d.datasets.coco import COCOLoader
 from kp2d.datasets.sonarsim import SonarSimLoader
 
-from kp2d.datasets.noise_model import NoiseUtility
 
-noise_util = NoiseUtility((440, 512))
+
 
 def sample_to_cuda(data):
     if isinstance(data, str):
@@ -35,17 +34,37 @@ def sample_to_cuda(data):
         return data.to('cuda')
 
 
-def image_transforms(shape, jittering):
-    def train_transforms(sample):
+def image_transforms(noise_util, config):
+    mode = config.datasets.augmentation.mode
+    if mode=='sonar_sim':
+        def train_transforms(sample):
 
-        sample = noise_util.pol_2_cart_sample(sample)
-        sample = noise_util.augment_sample(sample)
+            sample = noise_util.pol_2_cart_sample(sample)
+            sample = noise_util.augment_sample(sample)
 
-        sample = noise_util.filter_sample(sample)
-        sample = noise_util.cart_2_pol_sample(sample)
-        sample = to_tensor_sample(sample)
+            sample = noise_util.filter_sample(sample)
+            sample = noise_util.cart_2_pol_sample(sample)
+            sample = to_tensor_sample(sample)
 
-        return sample
+            return sample
+    elif mode=='sonar_real': #TODO
+        def train_transforms(sample):
+
+            sample = noise_util.pol_2_cart_sample(sample)
+            sample = noise_util.augment_sample(sample)
+
+            sample = noise_util.filter_sample(sample)
+            sample = noise_util.cart_2_pol_sample(sample)
+            sample = to_tensor_sample(sample)
+
+            return sample
+    elif mode=='default':
+        def train_transforms(sample):
+            sample = resize_sample(sample, image_shape=config.datasets.augmentation.shape)
+            sample = spatial_augment_sample(sample)
+            sample = to_tensor_sample(sample)
+            sample = ha_augment_sample(sample, jitter_paramters=config.datasets.augmentation.jittering)
+            return sample
 
     return {'train': train_transforms}
 
@@ -63,13 +82,13 @@ def _set_seeds(seed=42):
     torch.cuda.manual_seed_all(seed)
 
 
-def setup_datasets_and_dataloaders(config):
+def setup_datasets_and_dataloaders(config,noise_util):
     """Prepare datasets for training, validation and test."""
     def _worker_init_fn(worker_id):
         """Worker init fn to fix the seed of the workers"""
         _set_seeds(42 + worker_id)
 
-    data_transforms = image_transforms(shape=config.augmentation.image_shape, jittering=config.augmentation.jittering)
+    data_transforms = image_transforms(noise_util,config)
     train_dataset = SonarSimLoader(config.train.path, data_transform=data_transforms['train'])
     # Concatenate dataset to produce a larger one
     if config.train.repeat > 1:

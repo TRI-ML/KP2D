@@ -10,6 +10,7 @@ from yacs.config import CfgNode as CN
 cfg = CN()
 cfg.name = ''       # Run name
 cfg.debug = True   # Debugging flag
+cfg.device = 'cuda'
 ########################################################################################################################
 ### ARCH
 ########################################################################################################################
@@ -67,6 +68,9 @@ cfg.datasets = CN()
 cfg.datasets.augmentation = CN()
 cfg.datasets.augmentation.image_shape = (240, 320)              # Image shape
 cfg.datasets.augmentation.jittering = (0.5, 0.5, 0.2, 0.05)     # Color jittering values
+cfg.datasets.augmentation.fov = 70
+cfg.datasets.augmentation.mode = 'default'
+
 ########################################################################################################################
 ### DATASETS.TRAIN
 ########################################################################################################################
