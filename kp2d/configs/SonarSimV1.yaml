@@ -18,6 +18,9 @@ wandb:
     dry_run: True
     project: ""
 datasets:
+    augmentation:
+        mode: 'sonar_sim'
+        fov: 70
     train:
         path: "D:/MachineLearning/SonarData/SonarDataSets/Simulated"
         num_workers: 0
