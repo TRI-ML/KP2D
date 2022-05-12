@@ -4,7 +4,8 @@ opencv_python==4.5.5.64
 Pillow==9.1.0
 setuptools==60.10.0
 termcolor==1.1.0
-torch==1.12.0.dev20220329
+torch>=1.8.1
 torchvision==0.13.0.dev20220329
 tqdm==4.63.0
 yacs==0.1.8
+opencv-python
