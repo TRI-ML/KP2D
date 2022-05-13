@@ -5,7 +5,6 @@
 #    + descriptor upsampling
 #    + cross-border keypoints
 #    + descriptor loss
-
 model:
     params:
         use_color: True

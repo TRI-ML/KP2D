@@ -10,6 +10,7 @@ from kp2d.evaluation.descriptor_evaluation import (compute_homography,
 from kp2d.evaluation.detector_evaluation import compute_repeatability
 from kp2d.utils.image import to_color_normalized, to_gray_normalized
 
+#TODO: adjust evaluation to use polar/cart transforms
 
 def evaluate_keypoint_net(data_loader, keypoint_net, output_shape=(320, 240), top_k=300, use_color=True):
     """Keypoint net evaluation script. 

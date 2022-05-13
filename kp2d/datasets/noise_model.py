@@ -1,16 +1,12 @@
-import cv2
 import numpy as np
-import scipy.signal
 from kp2d.datasets.augmentations import sample_homography, warp_homography
 from math import pi
 import torch
 from kp2d.utils.image import image_grid
 
-#import kornia
-
 class NoiseUtility():
 
-    def __init__(self, shape, fov = 70, device = 'cuda'):
+    def __init__(self, shape, fov = 70, device = 'cpu'):
         self.shape = shape
         self.fov = fov
         self.device = device
@@ -79,22 +75,23 @@ class NoiseUtility():
         return filtered
 
     def sim_2_real_filter(self, img):
-        if img.shape.__len__() == 3:
-            mapped = self.pol_2_cart(img[:,:,0], self.map)
+        img = self.to_torch(img)
+        if img.shape.__len__() == 5:
+            mapped = self.pol_2_cart_torch(img.permute(0,4,2,3,1).squeeze(-1))[:,0,:,:].unsqueeze(0)
         else:
-            mapped = self.pol_2_cart(img, self.map)
+            mapped = self.pol_2_cart_torch(img.unsqueeze(-1))
 
         mapped = self.filter(mapped)
-        mapped = self.cart_2_pol(mapped, self.map)
-        mapped = scipy.signal.convolve2d(mapped, self.kernel, boundary='symm', mode='same')
-        if img.shape.__len__() == 3:
-            return np.stack((mapped,mapped,mapped), axis=2).astype(img.dtype)
+        mapped = self.cart_2_pol_torch(mapped).squeeze(0)
+        if img.shape.__len__() == 5:
+            return torch.stack((mapped, mapped, mapped), axis=1).to(img.dtype)
         else:
-            return mapped.astype(img.dtype)
+            return mapped.to(img.dtype)
 
     def to_torch(self, img):
         return torch.from_numpy(img).unsqueeze(0).unsqueeze(0).float().to(self.device)
 
+    # functions dedicated to working with the samples coming from the dataloader
     def pol_2_cart_sample(self, sample):
         img = self.to_torch(np.array(sample['image'])[:,:,0])
         mapped = self.pol_2_cart_torch(img)
@@ -132,7 +129,7 @@ class NoiseUtility():
         sample['image_aug'] = self.filter(img_aug).to(img_aug.dtype)
         return sample
 
-    def cart_2_pol_sample(self, sample, device='cpu'):
+    def cart_2_pol_sample(self, sample):
         img = sample['image']
         img_aug = sample['image_aug']
         mapped = self.cart_2_pol_torch(img).squeeze(0).squeeze(0)
@@ -140,11 +137,12 @@ class NoiseUtility():
         sample['image'] = torch.stack((mapped, mapped, mapped), axis=0).to(img.dtype)
         sample['image_aug'] = torch.stack((mapped_aug, mapped_aug, mapped_aug), axis=0).to(img.dtype)
 
-        cv2.imshow("img", mapped.to(device).numpy()  / 255)
-        cv2.imshow("img aug", mapped_aug.to(device).numpy()  / 255)
-        cv2.waitKey(0)
+        #cv2.imshow("img", mapped.to(device).numpy()  / 255)
+        #cv2.imshow("img aug", mapped_aug.to(device).numpy()  / 255)
+        #cv2.waitKey(0)
         return sample
 
+    # torch implementations of cartesian/polar conversions
     def pol_2_cart_torch(self, img):
         return torch.nn.functional.grid_sample(img, self.map_inv, mode='bilinear', padding_mode='zeros',
                                                 align_corners=None)
