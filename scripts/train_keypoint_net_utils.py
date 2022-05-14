@@ -35,7 +35,7 @@ def sample_to_cuda(data):
 
 
 def image_transforms(noise_util, config):
-    mode = config.datasets.augmentation.mode
+    mode = config.augmentation.mode
     if mode=='sonar_sim':
         def train_transforms(sample):
 
