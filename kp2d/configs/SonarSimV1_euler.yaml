@@ -23,8 +23,9 @@ datasets:
         fov: 70
 
     train:
-        path: '../../../scratch/rueeggth/dataset/real'
+        path: '../../../scratch/rueeggth/dataset/SonarDataSets/Simulated'
         num_workers: 0
+        batch_size: 2
     val:
         path: "../Dataset/HPatches/hpatches-sequences-release/"
 
