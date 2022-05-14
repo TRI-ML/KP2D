@@ -24,7 +24,7 @@ datasets:
 
     train:
         path: '../../../scratch/rueeggth/dataset/real'
-        num_workers: 16
+        num_workers: 0
     val:
         path: "../Dataset/HPatches/hpatches-sequences-release/"
 
