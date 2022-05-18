@@ -10,7 +10,7 @@ from yacs.config import CfgNode as CN
 cfg = CN()
 cfg.name = ''       # Run name
 cfg.debug = True   # Debugging flag
-cfg.device = 'conda'
+cfg.device = 'cuda'
 ########################################################################################################################
 ### ARCH
 ########################################################################################################################
@@ -50,7 +50,7 @@ cfg.model.optimizer.weight_decay = 0.0
 ### MODEL.PARAMS
 ########################################################################################################################
 cfg.model.params = CN()
-cfg.model.params.device = 'conda'
+cfg.model.params.device = 'cuda'
 cfg.model.params.keypoint_loss_weight = 1.0                 # Keypoint loss weight
 cfg.model.params.descriptor_loss_weight = 1.0               # Descriptor loss weight
 cfg.model.params.score_loss_weight = 1.0                    # Score loss weight
