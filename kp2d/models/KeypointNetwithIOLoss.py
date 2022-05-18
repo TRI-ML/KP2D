@@ -61,8 +61,8 @@ def build_descriptor_loss(source_des, target_des, source_points, tar_points, tar
             tar_points_raw = tar_points_un[cur_ind][:, keypoint_mask_ind]
 
         # Compute dense descriptor distance matrix and find nearest neighbor
-        ref_desc = ref_desc.div(torch.norm(ref_desc, p=2, dim=0))
-        tar_desc = tar_desc.div(torch.norm(tar_desc, p=2, dim=0))
+        ref_desc = ref_desc.div(torch.norm(ref_desc+epsilon, p=2, dim=0))
+        tar_desc = tar_desc.div(torch.norm(tar_desc+epsilon, p=2, dim=0))
         dmat = torch.mm(ref_desc.t(), tar_desc)
         dmat = torch.sqrt(2 - 2 * torch.clamp(dmat, min=-1, max=1))
 
