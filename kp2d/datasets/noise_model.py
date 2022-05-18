@@ -89,7 +89,10 @@ class NoiseUtility():
             return mapped.to(img.dtype)
 
     def to_torch(self, img):
-        return torch.from_numpy(img).unsqueeze(0).unsqueeze(0).float().to(self.device)
+        if self.device=='cpu':
+            return torch.from_numpy(img).unsqueeze(0).unsqueeze(0).float()
+        else:
+            return torch.from_numpy(img).unsqueeze(0).unsqueeze(0).float().to(self.device)
 
     # functions dedicated to working with the samples coming from the dataloader
     def pol_2_cart_sample(self, sample):
