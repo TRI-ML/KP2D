@@ -5,6 +5,8 @@
 #    + descriptor upsampling
 #    + cross-border keypoints
 #    + descriptor loss
+arch:
+    epochs: 5
 model:
     params:
         use_color: True

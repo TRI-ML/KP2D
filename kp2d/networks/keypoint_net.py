@@ -28,7 +28,7 @@ class KeypointNet(torch.nn.Module):
         Extra parameters
     """
 
-    def __init__(self, use_color=True, do_upsample=True, with_drop=True, do_cross=True, **kwargs):
+    def __init__(self, use_color=True, do_upsample=True, with_drop=True, do_cross=True,device = 'cpu', **kwargs):
         super().__init__()
 
         self.training = True

@@ -25,10 +25,10 @@ class conv_bn_elu(nn.Module):
         return self.conv(x)
 
 class KeypointEncoder(nn.Module):
-    def __init__(self, pretrained, with_drop):
+    def __init__(self, pretrained, with_drop, device = 'cpu'):
         super(KeypointEncoder, self).__init__()
 
-        self.rn = models.resnet18(pretrained)
+        self.rn = models.resnet18(pretrained).to(device)
         self.dropout = nn.Dropout2d(0.2)
         self.use_dropout = with_drop
 

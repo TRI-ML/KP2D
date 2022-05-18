@@ -82,7 +82,6 @@ def main(file):
     train_dataset, train_loader = setup_datasets_and_dataloaders(config.datasets, noise_util)
     printcolor('({}) length: {}'.format("Train", len(train_dataset)))
 
-    model = model.cuda()
     optimizer = optim.Adam(model.optim_params)
 
     # checkpoint model
@@ -197,7 +196,10 @@ def train(config, train_loader, model, optimizer, epoch, summary):
 
         # calculate loss
         optimizer.zero_grad()
-        data_cuda = sample_to_cuda(data)
+        if config.device=='cpu':
+            data_cuda = data
+        else:
+            data_cuda = sample_to_cuda(data)
         loss, recall = model(data_cuda)
 
         # compute gradient
@@ -207,6 +209,10 @@ def train(config, train_loader, model, optimizer, epoch, summary):
         running_recall += recall
 
         # SGD step
+        l = []
+        for key,data in model.keypoint_net.state_dict().items():
+            l.append(data.max().cpu().numpy())
+        print(max(l))
         optimizer.step()
         # pretty progress bar
         pbar.set_description('Train [ E {}, T {:d}, R {:.4f}, R_Avg {:.4f}, L {:.4f}, L_Avg {:.4f}]'.format(

@@ -144,11 +144,11 @@ class NoiseUtility():
     # torch implementations of cartesian/polar conversions
     def pol_2_cart_torch(self, img):
         return torch.nn.functional.grid_sample(img, self.map_inv, mode='bilinear', padding_mode='zeros',
-                                                align_corners=None)
+                                                align_corners=True)
 
     def cart_2_pol_torch(self, img):
         return torch.nn.functional.grid_sample(img, self.map, mode='bilinear', padding_mode='zeros',
-                                                align_corners=None)
+                                                align_corners=True)
 
 
 

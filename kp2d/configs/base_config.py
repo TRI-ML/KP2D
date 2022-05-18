@@ -10,12 +10,12 @@ from yacs.config import CfgNode as CN
 cfg = CN()
 cfg.name = ''       # Run name
 cfg.debug = True   # Debugging flag
-cfg.device = 'cuda'
+cfg.device = 'conda'
 ########################################################################################################################
 ### ARCH
 ########################################################################################################################
 cfg.arch = CN()
-cfg.arch.seed = 42                  # Random seed for Pytorch/Numpy initialization
+cfg.arch.seed = 42                # Random seed for Pytorch/Numpy initialization
 cfg.arch.epochs = 50                # Maximum number of epochs
 ########################################################################################################################
 ### WANDB
@@ -33,6 +33,7 @@ cfg.wandb.dir = ''                                       # Wandb save folder
 cfg.model = CN()
 cfg.model.checkpoint_path = '/data/experiments/kp2d/'              # Checkpoint path for model saving
 cfg.model.save_checkpoint = True
+
 ########################################################################################################################
 ### MODEL.SCHEDULER
 ########################################################################################################################
@@ -48,7 +49,8 @@ cfg.model.optimizer.weight_decay = 0.0
 ########################################################################################################################
 ### MODEL.PARAMS
 ########################################################################################################################
-cfg.model.params = CN()                                     
+cfg.model.params = CN()
+cfg.model.params.device = 'conda'
 cfg.model.params.keypoint_loss_weight = 1.0                 # Keypoint loss weight
 cfg.model.params.descriptor_loss_weight = 1.0               # Descriptor loss weight
 cfg.model.params.score_loss_weight = 1.0                    # Score loss weight
