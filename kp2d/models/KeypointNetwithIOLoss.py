@@ -104,7 +104,7 @@ def build_descriptor_loss(source_des, target_des, source_points, tar_points, tar
     return loss, recall
 
 
-def warp_homography_batch(sources, homographies, noise_util):
+def warp_homography_batch(sources, homographies, fov = 70):
     """Batch warp keypoints given homographies.
 
     Parameters
@@ -121,17 +121,35 @@ def warp_homography_batch(sources, homographies, noise_util):
     """
     B, H, W, _ = sources.shape
     warped_sources = []
+
     for b in range(B):
+
         source = sources[b].clone()
         source = source.view(-1,2)
         #TODO: do pol cartesian transforms
-        source = noise_util.pol_2_cart_torch(source)
+
+        ang = source[:,0]*fov/2 * torch.pi / 180
+        r = (source[:,1]  + 1)
+
+        temp = torch.polar(r, ang)
+
+        source[:,1] =  temp.real - 1
+        source[:,0] = temp.imag
+
         source = torch.addmm(homographies[b,:,2], source, homographies[b,:,:2].t())
         source.mul_(1/source[:,2].unsqueeze(1))
-        source = noise_util.cart_2_pol_torch(source)
+
+        x = source[:,0].clone()
+        y = source[:, 1].clone() + 1
+        temp1 = torch.sqrt(x*x + y*y)
+        temp2 = torch.arctan(x / (y + 1e-8)) / torch.pi * 2/fov*180
+        source[:, 1] =  temp1 - 1
+        source[:, 0] = temp2
 
         source = source[:,:2].contiguous().view(H,W,2)
+
         warped_sources.append(source)
+
     return torch.stack(warped_sources, dim=0)
 
 
@@ -184,7 +202,6 @@ class KeypointNetwithIOLoss(torch.nn.Module):
 
         self.use_color = use_color
         self.descriptor_loss = descriptor_loss
-        self.noise_util = NoiseUtility((440, 512))
 
         # Initialize KeypointNet
         if keypoint_net_type == 'KeypointNet':
@@ -305,6 +322,11 @@ class KeypointNetwithIOLoss(torch.nn.Module):
             vis_ori /= vis_ori.max()
             vis_ori = (vis_ori* 255).numpy().astype(np.uint8)
 
+            vis_aug = (input_img_aug[0].permute(1, 2, 0).detach().cpu().clone().squeeze() )
+            vis_aug -= vis_aug.min()
+            vis_aug /= vis_aug.max()
+            vis_aug = (vis_aug*255).numpy().astype(np.uint8)
+
             if self.use_color is False:
                 vis_ori = cv2.cvtColor(vis_ori, cv2.COLOR_GRAY2BGR)
 
@@ -313,6 +335,10 @@ class KeypointNetwithIOLoss(torch.nn.Module):
 
             _, top_k = source_score.view(B,-1).topk(self.top_k2, dim=1) #JT: Warped Source frame keypoints
             vis_ori = draw_keypoints(vis_ori, source_uv_warped.view(B,2,-1)[:,:,top_k[0].squeeze()],(255,0,255))
+
+            _, top_k = source_score.view(B,-1).topk(self.top_k2, dim=1) #JT: Target frame keypoints
+            vis_aug = draw_keypoints(vis_aug, source_uv_pred.view(B,2,-1)[:,:,top_k[0].squeeze()],(0,0,255))
+
 
             cm = get_cmap('plasma')
             heatmap = target_score[0].detach().cpu().clone().numpy().squeeze()
@@ -323,7 +349,11 @@ class KeypointNetwithIOLoss(torch.nn.Module):
 
             self.vis['img_ori'] = np.clip(vis_ori, 0, 255) / 255.
             self.vis['heatmap'] = np.clip(heatmap * 255, 0, 255) / 255.
-
+            self.vis['aug'] = np.clip(vis_aug, 0, 255) / 255.
+            cv2.imshow('org', self.vis['img_ori'])
+            cv2.imshow('heatmap', self.vis['heatmap'])
+            cv2.imshow('aug', self.vis['aug'])
+            cv2.waitKey(1)
         return loss_2d, recall_2d
 
     def _compute_io_loss(self, source_score,source_feat,target_feat, target_score,

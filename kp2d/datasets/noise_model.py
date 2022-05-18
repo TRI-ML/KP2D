@@ -104,9 +104,9 @@ class NoiseUtility():
         _,_,H, W = img.shape
 
         homography = sample_homography([H, W], perspective=False, scaling = False,
-                                       patch_ratio=0.7,
-                                       scaling_amplitude=0,
-                                       max_angle=pi)
+                                       patch_ratio=0.9,
+                                       scaling_amplitude=0.9,
+                                       max_angle=pi/4)
         homography = torch.from_numpy(homography).float().to(self.device)
         source_grid = image_grid(1, H, W,
                                  dtype=img.dtype,
