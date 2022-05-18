@@ -38,13 +38,14 @@ def image_transforms(noise_util, config):
     mode = config.augmentation.mode
     if mode=='sonar_sim':
         def train_transforms(sample):
-
+            sample = resize_sample(sample, image_shape=config.augmentation.image_shape)
             sample = noise_util.pol_2_cart_sample(sample)
             sample = noise_util.augment_sample(sample)
 
             sample = noise_util.filter_sample(sample)
             sample = noise_util.cart_2_pol_sample(sample)
             sample = to_tensor_sample(sample)
+
 
             return sample
     elif mode=='sonar_real': #TODO
@@ -60,10 +61,10 @@ def image_transforms(noise_util, config):
             return sample
     elif mode=='default':
         def train_transforms(sample):
-            sample = resize_sample(sample, image_shape=config.datasets.augmentation.shape)
+            sample = resize_sample(sample, image_shape=config.augmentation.image_shape)
             sample = spatial_augment_sample(sample)
             sample = to_tensor_sample(sample)
-            sample = ha_augment_sample(sample, jitter_paramters=config.datasets.augmentation.jittering)
+            sample = ha_augment_sample(sample, jitter_paramters=config.augmentation.jittering)
             return sample
 
     return {'train': train_transforms}

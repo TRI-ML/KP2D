@@ -25,10 +25,10 @@ class conv_bn_elu(nn.Module):
         return self.conv(x)
 
 class KeypointEncoder(nn.Module):
-    def __init__(self, pretrained, with_drop, device = 'cpu'):
+    def __init__(self, pretrained, with_drop):
         super(KeypointEncoder, self).__init__()
 
-        self.rn = models.resnet18(pretrained).to(device)
+        self.rn = models.resnet18(pretrained)
         self.dropout = nn.Dropout2d(0.2)
         self.use_dropout = with_drop
 
@@ -141,6 +141,7 @@ class KeypointDecoder(nn.Module):
         x = [upsample(x)]
         x += [input_features[0]]
         x = torch.cat(x, 1)
+
         x = self.upconv1_1(x)
         # Descriptor features
         self.outputs[("feature")]   = self.featconv(x)

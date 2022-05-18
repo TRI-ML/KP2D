@@ -59,7 +59,7 @@ cfg.model.params.with_io = True                             # Use IONet
 cfg.model.params.do_upsample = True                         # Upsample descriptors
 cfg.model.params.do_cross = True                            # Use cross-border keypoints
 cfg.model.params.descriptor_loss = True                     # Use hardest negative mining descriptor loss
-cfg.model.params.keypoint_net_type = 'KeypointNet'          # Type of keypoint network. Supported ['KeypointNet', 'KeypointResnet']
+cfg.model.params.keypoint_net_type = 'KeypointResnet'          # Type of keypoint network. Supported ['KeypointNet', 'KeypointResnet']
 ########################################################################################################################
 ### DATASETS
 ########################################################################################################################
@@ -68,7 +68,7 @@ cfg.datasets = CN()
 ### DATASETS.AUGMENTATION
 ########################################################################################################################
 cfg.datasets.augmentation = CN()
-cfg.datasets.augmentation.image_shape = (240, 320)              # Image shape
+cfg.datasets.augmentation.image_shape = (512, 512)              # Image shape
 cfg.datasets.augmentation.jittering = (0.5, 0.5, 0.2, 0.05)     # Color jittering values
 cfg.datasets.augmentation.fov = 70
 cfg.datasets.augmentation.mode = 'default'

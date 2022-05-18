@@ -67,7 +67,7 @@ def main(file):
     torch.set_num_threads(n_threads)    
     torch.backends.cudnn.benchmark = True
     # torch.backends.cudnn.deterministic = True
-    noise_util = NoiseUtility((440,512),fov=config.datasets.augmentation.fov, device='cpu')
+    noise_util = NoiseUtility(config.datasets.augmentation.image_shape,fov=config.datasets.augmentation.fov, device='cpu')
 
     printcolor('-'*25 + 'SINGLE GPU ' + '-'*25, 'cyan')
     
@@ -212,7 +212,6 @@ def train(config, train_loader, model, optimizer, epoch, summary):
         l = []
         for key,data in model.keypoint_net.state_dict().items():
             l.append(data.max().cpu().numpy())
-        print(max(l))
         optimizer.step()
         # pretty progress bar
         pbar.set_description('Train [ E {}, T {:d}, R {:.4f}, R_Avg {:.4f}, L {:.4f}, L_Avg {:.4f}]'.format(

@@ -222,7 +222,7 @@ class KeypointNetwithIOLoss(torch.nn.Module):
         if keypoint_net_type == 'KeypointNet':
             self.keypoint_net = KeypointNet(use_color=use_color, do_upsample=do_upsample, with_drop=with_drop, do_cross=do_cross)
         elif keypoint_net_type == 'KeypointResnet':
-            self.keypoint_net = KeypointResnet(with_drop=with_drop, device = self.device)
+            self.keypoint_net = KeypointResnet(with_drop=with_drop)
         else:
             raise NotImplemented('Keypoint net type not supported {}'.format(keypoint_net_type))
         self.keypoint_net = self.keypoint_net.to(self.device)
@@ -245,7 +245,7 @@ class KeypointNetwithIOLoss(torch.nn.Module):
             {'name': name, 'lr': lr, 'original_lr': lr,
              'params': filter(lambda p: p.requires_grad, params)})
 
-    def forward(self, data, debug=False):
+    def forward(self, data, debug=True):
         """
         Processes a batch.
 
