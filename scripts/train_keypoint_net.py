@@ -67,7 +67,7 @@ def main(file):
     torch.set_num_threads(n_threads)    
     torch.backends.cudnn.benchmark = True
     # torch.backends.cudnn.deterministic = True
-    noise_util = NoiseUtility((440,512),fov=config.datasets.augmentation.fov, device=config.device)
+    noise_util = NoiseUtility((440,512),fov=config.datasets.augmentation.fov, device='cpu')
 
     printcolor('-'*25 + 'SINGLE GPU ' + '-'*25, 'cyan')
     

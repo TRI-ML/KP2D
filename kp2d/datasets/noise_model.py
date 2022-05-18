@@ -13,7 +13,6 @@ class NoiseUtility():
 
         self.map, self.map_inv = self.init_map()
         self.kernel = self.init_kernel()
-
     def init_kernel(self):
         kernel = torch.tensor(
             [[0, 0, 0, 0, 0], [0, 0.25, 0.5, 0.25, 0], [0.5, 1, 1, 1, 0.5], [0, 0.25, 0.5, 0.25, 0], [0, 0, 0, 0, 0]])
@@ -89,10 +88,7 @@ class NoiseUtility():
             return mapped.to(img.dtype)
 
     def to_torch(self, img):
-        if self.device=='cpu':
-            return torch.from_numpy(img).unsqueeze(0).unsqueeze(0).float()
-        else:
-            return torch.from_numpy(img).unsqueeze(0).unsqueeze(0).float().to(self.device)
+        return torch.from_numpy(img).unsqueeze(0).unsqueeze(0).float().to(self.device)
 
     # functions dedicated to working with the samples coming from the dataloader
     def pol_2_cart_sample(self, sample):
