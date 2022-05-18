@@ -13,6 +13,7 @@ from kp2d.utils.image import (image_grid, to_color_normalized,
                               to_gray_normalized)
 from kp2d.utils.keypoints import draw_keypoints
 
+from kp2d.datasets.noise_model import NoiseUtility
 
 def build_descriptor_loss(source_des, target_des, source_points, tar_points, tar_points_un, keypoint_mask=None, relax_field=8, eval_only=False):
     """Desc Head Loss, per-pixel level triplet loss from https://arxiv.org/pdf/1902.11046.pdf..
@@ -103,7 +104,7 @@ def build_descriptor_loss(source_des, target_des, source_points, tar_points, tar
     return loss, recall
 
 
-def warp_homography_batch(sources, homographies):
+def warp_homography_batch(sources, homographies, noise_util):
     """Batch warp keypoints given homographies.
 
     Parameters
@@ -123,8 +124,12 @@ def warp_homography_batch(sources, homographies):
     for b in range(B):
         source = sources[b].clone()
         source = source.view(-1,2)
+        #TODO: do pol cartesian transforms
+        source = noise_util.pol_2_cart_torch(source)
         source = torch.addmm(homographies[b,:,2], source, homographies[b,:,:2].t())
         source.mul_(1/source[:,2].unsqueeze(1))
+        source = noise_util.cart_2_pol_torch(source)
+
         source = source[:,:2].contiguous().view(H,W,2)
         warped_sources.append(source)
     return torch.stack(warped_sources, dim=0)
@@ -179,6 +184,7 @@ class KeypointNetwithIOLoss(torch.nn.Module):
 
         self.use_color = use_color
         self.descriptor_loss = descriptor_loss
+        self.noise_util = NoiseUtility((440, 512))
 
         # Initialize KeypointNet
         if keypoint_net_type == 'KeypointNet':

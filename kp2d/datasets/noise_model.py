@@ -20,7 +20,7 @@ class NoiseUtility():
         kernel = (kernel / torch.sum(kernel)).unsqueeze(0).unsqueeze(0).to(self.device)
         return kernel
 
-    def init_map(self):
+    def init_map(self, epsilon = 1e-8):
         h, w = self.shape
         ang = np.linspace(-self.fov / 2, +self.fov / 2, w)
         r = np.linspace(0, h, h)
@@ -40,7 +40,7 @@ class NoiseUtility():
                 y_n = y
 
                 map_inv[y, x, 1] = np.sqrt(x_n * x_n + y_n * y_n)
-                map_inv[y, x, 0] = np.arctan(x_n / max(y_n, 0.00000001)) / np.pi * 2
+                map_inv[y, x, 0] = np.arctan(x_n / (y_n + epsilon)) / np.pi * 2
 
         def normalize(m):
             minimum = m.min()
