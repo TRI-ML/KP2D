@@ -15,7 +15,7 @@ from kp2d.utils.keypoints import draw_keypoints
 
 from kp2d.datasets.noise_model import NoiseUtility
 
-def build_descriptor_loss(source_des, target_des, source_points, tar_points, tar_points_un, keypoint_mask=None, relax_field=8, eval_only=False):
+def build_descriptor_loss(source_des, target_des, source_points, tar_points, tar_points_un, keypoint_mask=None, relax_field=8,epsilon=1e-8, eval_only=False):
     """Desc Head Loss, per-pixel level triplet loss from https://arxiv.org/pdf/1902.11046.pdf..
     Parameters
     ----------
