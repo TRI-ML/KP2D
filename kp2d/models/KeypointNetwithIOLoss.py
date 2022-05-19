@@ -245,7 +245,7 @@ class KeypointNetwithIOLoss(torch.nn.Module):
             {'name': name, 'lr': lr, 'original_lr': lr,
              'params': filter(lambda p: p.requires_grad, params)})
 
-    def forward(self, data, debug=True):
+    def forward(self, data, debug=False):
         """
         Processes a batch.
 
