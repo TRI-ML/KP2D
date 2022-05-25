@@ -10,7 +10,7 @@ from torch.utils.data import ConcatDataset, DataLoader
 
 from kp2d.datasets.augmentations import (ha_augment_sample, resize_sample,
                                          spatial_augment_sample,
-                                         to_tensor_sample, add_noise)
+                                         to_tensor_sample,to_tensor_sonar_sample)
 from kp2d.datasets.coco import COCOLoader
 from kp2d.datasets.sonarsim import SonarSimLoader
 
@@ -38,13 +38,13 @@ def image_transforms(noise_util, config):
     mode = config.augmentation.mode
     if mode=='sonar_sim':
         def train_transforms(sample):
-            sample = resize_sample(sample, image_shape=config.augmentation.image_shape)
+            # sample = resize_sample(sample, image_shape=config.augmentation.image_shape)
             sample = noise_util.pol_2_cart_sample(sample)
             sample = noise_util.augment_sample(sample)
 
             sample = noise_util.filter_sample(sample)
             sample = noise_util.cart_2_pol_sample(sample)
-            sample = to_tensor_sample(sample)
+            sample = to_tensor_sonar_sample(sample)
 
 
             return sample
@@ -56,7 +56,7 @@ def image_transforms(noise_util, config):
 
             sample = noise_util.filter_sample(sample)
             sample = noise_util.cart_2_pol_sample(sample)
-            sample = to_tensor_sample(sample)
+            sample = to_tensor_sonar_sample(sample)
 
             return sample
     elif mode=='default':
@@ -65,6 +65,7 @@ def image_transforms(noise_util, config):
             sample = spatial_augment_sample(sample)
             sample = to_tensor_sample(sample)
             sample = ha_augment_sample(sample, jitter_paramters=config.augmentation.jittering)
+
             return sample
 
     return {'train': train_transforms}

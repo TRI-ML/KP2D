@@ -6,6 +6,9 @@
 #    + cross-border keypoints
 #    + descriptor loss
 
+arch:
+    epochs: 10
+
 model:
     params:
         use_color: True
@@ -13,6 +16,7 @@ model:
         do_upsample: True
         do_cross: True
         descriptor_loss: True
+        debug: False
 
 wandb:
     dry_run: True

@@ -55,7 +55,7 @@ def resize_sample(sample, image_shape, image_interpolation=Image.ANTIALIAS):
     return sample
 
 
-def to_tensor_sample(sample, tensor_type='torch.FloatTensor'):
+def to_tensor_sonar_sample(sample, tensor_type='torch.FloatTensor'):
     """
     Casts the keys of sample to tensors.
 
@@ -75,6 +75,23 @@ def to_tensor_sample(sample, tensor_type='torch.FloatTensor'):
     sample['image_aug'] = sample['image_aug'].type(tensor_type)
     return sample
 
+def to_tensor_sample(sample, tensor_type='torch.FloatTensor'):
+    """
+    Casts the keys of sample to tensors.
+    Parameters
+    ----------
+    sample : dict
+        Input sample
+    tensor_type : str
+        Type of tensor we are casting to
+    Returns
+    -------
+    sample : dict
+        Sample with keys cast as tensors
+    """
+    transform = transforms.ToTensor()
+    sample['image'] = transform(sample['image']).type(tensor_type)
+    return sample
 
 def spatial_augment_sample(sample):
     """ Apply spatial augmentation to an image (flipping and random affine transformation)."""

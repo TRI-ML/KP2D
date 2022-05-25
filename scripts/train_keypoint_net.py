@@ -78,7 +78,7 @@ def main(file):
     printcolor(config.model.params, 'red')
 
     # Setup model and datasets/dataloaders
-    model = KeypointNetwithIOLoss(**config.model.params)
+    model = KeypointNetwithIOLoss(mode=config.datasets.augmentation.mode,**config.model.params)
     train_dataset, train_loader = setup_datasets_and_dataloaders(config.datasets, noise_util)
     printcolor('({}) length: {}'.format("Train", len(train_dataset)))
 

@@ -143,7 +143,6 @@ def warp_homography_batch(sources, homographies, fov = 70, mode='sonar_sim'):
     if mode == 'sonar_sim':
         for b in range(B):
 
-
             source = sources[b].clone()
             source = source.view(-1,2)
 
@@ -165,6 +164,7 @@ def warp_homography_batch(sources, homographies, fov = 70, mode='sonar_sim'):
             source = torch.addmm(homographies[b, :, 2], source, homographies[b, :, :2].t())
             source.mul_(1 / source[:, 2].unsqueeze(1))
 
+            source = source[:, :2].contiguous().view(H, W, 2)
             warped_sources.append(source)
     return torch.stack(warped_sources, dim=0)
 
@@ -204,6 +204,7 @@ class KeypointNetwithIOLoss(torch.nn.Module):
         do_cross=True, descriptor_loss=True, with_drop=True, keypoint_net_type='KeypointNet',device='cpu', mode = 'sonar_sim', debug = 'False', **kwargs):
 
         super().__init__()
+        self.mode = mode
         self.device = device
         self.keypoint_loss_weight = keypoint_loss_weight
         self.descriptor_loss_weight = descriptor_loss_weight
@@ -247,7 +248,7 @@ class KeypointNetwithIOLoss(torch.nn.Module):
             {'name': name, 'lr': lr, 'original_lr': lr,
              'params': filter(lambda p: p.requires_grad, params)})
 
-    def forward(self, data):
+    def forward(self, data, debug = False):
         """
         Processes a batch.
 
@@ -288,7 +289,7 @@ class KeypointNetwithIOLoss(torch.nn.Module):
         target_uv_norm = _normalize_uv_coordinates(target_uv_pred, H, W)
         source_uv_norm = _normalize_uv_coordinates(source_uv_pred, H, W)
 
-        source_uv_warped_norm = warp_homography_batch(source_uv_norm, homography)
+        source_uv_warped_norm = warp_homography_batch(source_uv_norm, homography, mode=self.mode)
         source_uv_warped = _denormalize_uv_coordinates(source_uv_warped_norm, H, W)
 
         # Border mask
@@ -339,7 +340,7 @@ class KeypointNetwithIOLoss(torch.nn.Module):
             loss_dict['io_loss'] = io_loss
         #print(loss_dict)
         # if debug and torch.cuda.current_device() == 0:
-        if self.debug:
+        if debug or self.debug:
             # Generate visualization data
             vis_ori = (input_img[0].permute(1, 2, 0).detach().cpu().clone().squeeze() )
             vis_ori -= vis_ori.min()
@@ -383,7 +384,7 @@ class KeypointNetwithIOLoss(torch.nn.Module):
     def _compute_io_loss(self, source_score,source_feat,target_feat, target_score,
                          B, Hc, Wc, H, W,
                          source_uv_norm, target_uv_norm, source_uv_warped_norm,
-                         device):
+                         device, epsilon = 1e-8):
         top_k_score1, top_k_indice1 = source_score.view(B, Hc * Wc).topk(self.top_k2, dim=1, largest=False)
         top_k_mask1 = torch.zeros(B, Hc * Wc).to(device)
         top_k_mask1.scatter_(1, top_k_indice1, value=1)
@@ -407,7 +408,7 @@ class KeypointNetwithIOLoss(torch.nn.Module):
         target_feat_topk = target_feat_topk.div(torch.norm(target_feat_topk, p=2, dim=1).unsqueeze(1))
 
         dmat = torch.bmm(source_feat_topk.permute(0, 2, 1), target_feat_topk)
-        dmat = torch.sqrt(2 - 2 * torch.clamp(dmat, min=-1, max=1))
+        dmat = torch.sqrt(2 - 2 * torch.clamp(dmat, min=-1, max=1)+epsilon)
         dmat_min, dmat_min_indice = torch.min(dmat, dim=2)
 
         target_uv_norm_topk_associated = target_uv_norm_topk.gather(1, dmat_min_indice.unsqueeze(2).repeat(1, 1, 2))
