@@ -50,6 +50,7 @@ cfg.model.optimizer.weight_decay = 0.0
 ### MODEL.PARAMS
 ########################################################################################################################
 cfg.model.params = CN()
+cfg.model.params.debug = False
 cfg.model.params.device = 'cuda'
 cfg.model.params.keypoint_loss_weight = 1.0                 # Keypoint loss weight
 cfg.model.params.descriptor_loss_weight = 1.0               # Descriptor loss weight
@@ -59,7 +60,7 @@ cfg.model.params.with_io = True                             # Use IONet
 cfg.model.params.do_upsample = True                         # Upsample descriptors
 cfg.model.params.do_cross = True                            # Use cross-border keypoints
 cfg.model.params.descriptor_loss = True                     # Use hardest negative mining descriptor loss
-cfg.model.params.keypoint_net_type = 'KeypointResnet'          # Type of keypoint network. Supported ['KeypointNet', 'KeypointResnet']
+cfg.model.params.keypoint_net_type = 'KeypointNet'          # Type of keypoint network. Supported ['KeypointNet', 'KeypointResnet']
 ########################################################################################################################
 ### DATASETS
 ########################################################################################################################
@@ -71,13 +72,13 @@ cfg.datasets.augmentation = CN()
 cfg.datasets.augmentation.image_shape = (512, 512)              # Image shape
 cfg.datasets.augmentation.jittering = (0.5, 0.5, 0.2, 0.05)     # Color jittering values
 cfg.datasets.augmentation.fov = 70
-cfg.datasets.augmentation.mode = 'default'
+cfg.datasets.augmentation.mode = 'sonar_sim'
 
 ########################################################################################################################
 ### DATASETS.TRAIN
 ########################################################################################################################
 cfg.datasets.train = CN()
-cfg.datasets.train.batch_size = 8                                      # Training batch size
+cfg.datasets.train.batch_size = 2                                   # Training batch size
 cfg.datasets.train.num_workers = 0   #16 for Euler                                  # Training number of workers
 cfg.datasets.train.path = '/data/datasets/kp2d/coco/train2017/'        # Training data path (COCO dataset)
 cfg.datasets.train.repeat = 1                                          # Number of times training dataset is repeated per epoch

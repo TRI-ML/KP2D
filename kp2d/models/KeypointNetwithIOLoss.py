@@ -201,7 +201,7 @@ class KeypointNetwithIOLoss(torch.nn.Module):
     def __init__(
         self, keypoint_loss_weight=1.0, descriptor_loss_weight=2.0, score_loss_weight=1.0, 
         keypoint_net_learning_rate=0.001, with_io=True, use_color=True, do_upsample=True, 
-        do_cross=True, descriptor_loss=True, with_drop=True, keypoint_net_type='KeypointNet',device='cpu', mode = 'sonar_sim', **kwargs):
+        do_cross=True, descriptor_loss=True, with_drop=True, keypoint_net_type='KeypointNet',device='cpu', mode = 'sonar_sim', debug = 'False', **kwargs):
 
         super().__init__()
         self.device = device
@@ -216,6 +216,7 @@ class KeypointNetwithIOLoss(torch.nn.Module):
         self.top_k2 = 300
         self.relax_field = 4
 
+        self.debug = debug
         self.use_color = use_color
         self.descriptor_loss = descriptor_loss
 
@@ -246,7 +247,7 @@ class KeypointNetwithIOLoss(torch.nn.Module):
             {'name': name, 'lr': lr, 'original_lr': lr,
              'params': filter(lambda p: p.requires_grad, params)})
 
-    def forward(self, data, debug=False):
+    def forward(self, data):
         """
         Processes a batch.
 
@@ -338,7 +339,7 @@ class KeypointNetwithIOLoss(torch.nn.Module):
             loss_dict['io_loss'] = io_loss
         #print(loss_dict)
         # if debug and torch.cuda.current_device() == 0:
-        if debug:
+        if self.debug:
             # Generate visualization data
             vis_ori = (input_img[0].permute(1, 2, 0).detach().cpu().clone().squeeze() )
             vis_ori -= vis_ori.min()
