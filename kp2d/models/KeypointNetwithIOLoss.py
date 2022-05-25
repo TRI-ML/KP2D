@@ -103,6 +103,7 @@ def build_descriptor_loss(source_des, target_des, source_points, tar_points, tar
 
     return loss, recall
 
+#TODO: Get proper values for min and max depth of sonar
 def pol_2_cart(source, fov):
     ang = source[:, 0] * fov / 2 * torch.pi / 180
     r = (source[:, 1] + 1)
@@ -118,7 +119,7 @@ def cart_2_pol(source, fov, epsilon = 1e-8):
     x = source[:, 0].clone()
     y = source[:, 1].clone() + 1
 
-    source[:, 1] = torch.sqrt(x * x + y * y) - 1
+    source[:, 1] = torch.sqrt(x * x + y * y + epsilon) - 1
     source[:, 0] = torch.arctan(x / (y + epsilon)) / torch.pi * 2 / fov * 180
     return source
 
@@ -148,7 +149,7 @@ def warp_homography_batch(sources, homographies, fov = 70, mode='sonar_sim'):
 
             source = pol_2_cart(source, fov)
 
-            source = torch.addmm(homographies[b,:,2], source, homographies[b,:,:2].t())
+            source = torch.addmm(homographies[b,:,2], source, homographies[b,:,:2].t()) #TODO: check if gradients are tracked
             source.mul_(1/source[:,2].unsqueeze(1))
 
             source = cart_2_pol(source, fov)
@@ -245,7 +246,7 @@ class KeypointNetwithIOLoss(torch.nn.Module):
             {'name': name, 'lr': lr, 'original_lr': lr,
              'params': filter(lambda p: p.requires_grad, params)})
 
-    def forward(self, data, debug=False):
+    def forward(self, data, debug=True):
         """
         Processes a batch.
 
@@ -269,12 +270,12 @@ class KeypointNetwithIOLoss(torch.nn.Module):
         recall_2d = 0
         inlier_cnt = 0
 
-        input_img = data['image']
-        input_img_aug = data['image_aug']
+        input_img = data['image']/255.
+        input_img_aug = data['image_aug']/255.
         homography = data['homography']
 
-        input_img = to_color_normalized(input_img.clone())
-        input_img_aug = to_color_normalized(input_img_aug.clone())
+        #input_img = to_color_normalized(input_img.clone())
+        #input_img_aug = to_color_normalized(input_img_aug.clone())
 
         # Get network outputs
         source_score, source_uv_pred, source_feat = self.keypoint_net(input_img_aug)
