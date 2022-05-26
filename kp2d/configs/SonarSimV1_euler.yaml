@@ -6,7 +6,7 @@
 #    + cross-border keypoints
 #    + descriptor loss
 arch:
-    epochs: 5
+    epochs: 50
 model:
     params:
         use_color: True
@@ -27,7 +27,7 @@ datasets:
     train:
         path: '../../../scratch/rueeggth/dataset/SonarDataSets/Simulated'
         num_workers: 16
-        batch_size: 4
+        batch_size: 8
     val:
         path: "../Dataset/HPatches/hpatches-sequences-release/"
 
