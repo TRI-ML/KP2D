@@ -16,7 +16,7 @@ model:
         do_upsample: True
         do_cross: True
         descriptor_loss: True
-        debug: False
+        debug: True
 
 wandb:
     dry_run: True

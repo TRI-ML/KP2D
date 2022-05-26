@@ -104,9 +104,9 @@ def build_descriptor_loss(source_des, target_des, source_points, tar_points, tar
     return loss, recall
 
 #TODO: Get proper values for min and max depth of sonar
-def pol_2_cart(source, fov):
+def pol_2_cart(source, fov, epsilon = 1e-14):
     ang = source[:, 0] * fov / 2 * torch.pi / 180
-    r = (source[:, 1] + 1)
+    r = (source[:, 1] + 1)+ torch.sqrt(torch.tensor(epsilon))
 
     temp = torch.polar(r, ang)
 
@@ -114,7 +114,7 @@ def pol_2_cart(source, fov):
     source[:, 0] = temp.imag
     return source
 
-def cart_2_pol(source, fov, epsilon = 1e-8):
+def cart_2_pol(source, fov, epsilon = 1e-14):
 
     x = source[:, 0].clone()
     y = source[:, 1].clone() + 1
