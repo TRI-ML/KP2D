@@ -106,11 +106,11 @@ def build_descriptor_loss(source_des, target_des, source_points, tar_points, tar
 #TODO: Get proper values for min and max depth of sonar
 def pol_2_cart(source, fov, epsilon = 1e-14):
     ang = source[:, 0] * fov / 2 * torch.pi / 180
-    r = (source[:, 1] + 1)+ torch.sqrt(torch.tensor(epsilon))
+    r = (source[:, 1] + 1) + torch.sqrt(torch.tensor(epsilon))
 
     temp = torch.polar(r, ang)
 
-    source[:, 1] = temp.real - 1
+    source[:, 1] = temp.real - 1 - torch.sqrt(torch.tensor(epsilon))
     source[:, 0] = temp.imag
     return source
 
@@ -122,6 +122,64 @@ def cart_2_pol(source, fov, epsilon = 1e-14):
     source[:, 1] = torch.sqrt(x * x + y * y + epsilon) - 1
     source[:, 0] = torch.arctan(x / (y + epsilon)) / torch.pi * 2 / fov * 180
     return source
+
+
+def calculate_distribution_wrapping(image_in):
+
+    #this function calculates the positional mean and standard deviation of an image for each row
+    for i in range(image_in.shape[0]):
+        image = image_in[i,0,:,:].clone()
+        np_image = image.cpu().numpy()
+        height, width = np_image.shape
+        positional_mean = []
+        positional_std = []
+
+        mean_matrix = np.empty([height, width])
+        standard_matrix = np.empty([height, width])
+
+        positional_vector = np.arange(width)
+
+
+        for row in range(height):
+            row_sum = np.dot(np_image[row,:],np.ones(width))
+            if row_sum == 0:
+                scaled_row = np_image[row,:]
+            else:
+                scaled_row = np.divide(np_image[row,:],np.ones(width)*row_sum)
+            row_mean = np.dot(scaled_row,positional_vector)
+            positional_mean.append(row_mean)
+
+            #std_positional_vector = np.abs(positional_vector - np.ones(width)*row_mean)
+            std_positional_vector = np.minimum(np.abs(positional_vector - np.ones(width)*row_mean),np.ones(width)*width-np.abs(np.ones(width)*row_mean-positional_vector))
+            std_positional_vector = np.multiply(std_positional_vector,std_positional_vector)
+
+            row_std = np.sqrt(np.dot(scaled_row,std_positional_vector))
+            positional_std.append(row_std)
+
+
+
+        for column in range(width):
+            standard_matrix[:,column] = positional_std
+
+            #mean_matrix[:,column] = np.abs(np.ones(height)*positional_vector[column]-positional_mean)
+            normal_mean = np.abs(np.ones(height)*positional_vector[column]-positional_mean)
+            mean_matrix[:,column] = np.minimum(normal_mean, np.abs(np.ones(height)*width - normal_mean))
+            #print('min of std_matrix:', np.min(standard_matrix))
+
+        std_tensor = torch.from_numpy(standard_matrix)
+        max_std = (width-1)/2
+        std_tensor = torch.div(std_tensor,max_std)
+
+        #print('min of std_tensor:', torch.min(std_tensor))
+
+        mean_tensor = torch.from_numpy(mean_matrix)
+        max_mean = width/2
+        mean_tensor = torch.div(mean_tensor, max_mean)
+        image_in[i, 0, :, :] = mean_tensor.to(image_in.device)
+        image_in[i, 1, :, :] = std_tensor.to(image_in.device)
+    return image_in
+
+
 
 def warp_homography_batch(sources, homographies, fov = 70, mode='sonar_sim'):
     """Batch warp keypoints given homographies.
@@ -275,6 +333,7 @@ class KeypointNetwithIOLoss(torch.nn.Module):
         input_img = data['image']/255.
         input_img_aug = data['image_aug']/255.
         homography = data['homography']
+
 
         #input_img = to_color_normalized(input_img.clone())
         #input_img_aug = to_color_normalized(input_img_aug.clone())

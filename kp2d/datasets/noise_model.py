@@ -5,22 +5,22 @@ import torch
 from kp2d.utils.image import image_grid
 
 
-def pol_2_cart(source, fov, epsilon=1e-14, rmin = 0.0):
+def pol_2_cart(source, fov, epsilon=1e-14):
     ang = source[:,:, 0] * fov / 2 * torch.pi / 180
     r = source[:,:, 1] + 1  + torch.sqrt(torch.tensor(epsilon))
 
     temp = torch.polar(r, ang)
 
-    source[:,:, 1] = temp.real - 1 - rmin
+    source[:,:, 1] = temp.real - 1 - torch.sqrt(torch.tensor(epsilon))
     source[:,:, 0] = temp.imag
     return source
 
 
-def cart_2_pol(source, fov, epsilon=1e-14, rmin = 0.0):
+def cart_2_pol(source, fov, epsilon=1e-14):
     x = source[:,:, 0].clone()
-    y = source[:,:, 1].clone() + 1 + rmin
+    y = (source[:,:, 1].clone() + 1)
 
-    source[:,:, 1] = torch.sqrt(x * x + y * y + epsilon) - 1 - rmin
+    source[:,:, 1] = torch.sqrt(x * x + y * y + epsilon) - 1
     source[:,:, 0] = torch.arctan(x / (y + epsilon)) / torch.pi * 2 / fov * 180
     return source
 
@@ -35,7 +35,6 @@ class NoiseUtility():
         self.shape = shape
         self.fov = fov
         self.device = device
-
         self.map, self.map_inv = self.init_map()
         self.kernel = self.init_kernel()
     def init_kernel(self):
@@ -55,23 +54,6 @@ class NoiseUtility():
 
         map = pol_2_cart(source_grid.clone().squeeze(0), self.fov).unsqueeze(0)
         map_inv = cart_2_pol(source_grid.clone().squeeze(0), self.fov).unsqueeze(0)
-        return map, map_inv
-
-        def normalize(m):
-            minimum = m.min()
-            r = m.max() - minimum
-
-            return (m - minimum - r / 2) / r * 2
-
-        map_inv[:, :, 0] = normalize(map_inv[:, :, 0]) * 180 / self.fov
-        map_inv[:, :, 1] = normalize(map_inv[:, :, 1])
-
-        map[:, :, 0] = normalize(map[:, :, 0])
-        map[:, :, 1] = normalize(map[:, :, 1])
-        print(map_inv[:, :, 0].min(), map_inv[:, :, 1].min())
-        print(map_inv[:, :, 0].max(), map_inv[:, :, 1].max())
-        map = torch.from_numpy(map).float().unsqueeze(0).to(self.device)
-        map_inv = torch.from_numpy(map_inv).float().unsqueeze(0).to(self.device)
         return map, map_inv
 
     def filter(self, img):
@@ -117,9 +99,9 @@ class NoiseUtility():
         _,_,H, W = img.shape
 
         homography = sample_homography([H, W], perspective=False, scaling = True,
-                                       patch_ratio=0.9,
-                                       scaling_amplitude=0.1,
-                                       max_angle=pi/4)
+                                       patch_ratio=0.8,
+                                       scaling_amplitude=0.2,
+                                       max_angle=pi/2)
         homography = torch.from_numpy(homography).float().to(self.device)
         source_grid = image_grid(1, H, W,
                                  dtype=img.dtype,
@@ -166,16 +148,11 @@ class NoiseUtility():
 
 
 
-def create_row_noise_torch(x, amp= 20, device='cpu'):
+def create_row_noise_torch(x, amp= 50, device='cpu'):
     noise = x.clone().to(device)
+    amp = torch.randn(1)*20+amp
     for r in range(x.shape[2]):
-        noise[:,:,r,:] =(torch.randn(x.shape[3])*amp-amp/2 + torch.randn(x.shape[3])*amp/2+amp/2).to(device)/(torch.sum(x[:,:,r,:])/3000+1)
-    return noise
-
-def create_row_noise(x):
-    noise = x.clone()
-    for r in range(x.shape[0]):
-        noise[r,:] = np.random.normal(5,5,x.shape[1])/(np.sum(x[r,:])/300+1)
+        noise[:,:,r,:] =(torch.randn(x.shape[3])*amp-amp/2 + torch.randn(x.shape[3])*amp/2+amp/2).to(device)/(torch.sum(x[:,:,r,:])/np.random.normal(2500,1000,1)+1)
     return noise
 
 def create_speckle_noise(x, device = 'cpu'):
@@ -183,7 +160,7 @@ def create_speckle_noise(x, device = 'cpu'):
     return noise
 
 def add_sparkle(x, conv_kernel, device = 'cpu'):
-    sparkle = torch.clip((x-50)-torch.randn(x.shape).to(device),0,255)
+    sparkle = torch.clip((x-100)-torch.randn(x.shape).to(device),0,255)
     #sparkle = torch.clip((kornia.morphology.dilation(x, kernel, iterations=2).astype('int8')-50)*2-np.random.normal(20,100,x.shape),0,255)
     sparkle = torch.nn.functional.conv2d(sparkle, conv_kernel, bias=None, stride=[1,1], padding='same')
     x = torch.clip(x+sparkle,0,255)
