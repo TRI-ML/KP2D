@@ -5,22 +5,24 @@ import torch
 from kp2d.utils.image import image_grid
 
 
-def pol_2_cart(source, fov, epsilon=1e-14):
+def pol_2_cart(source, fov, epsilon=1e-14, r_min = 5, r_max = 100):
+    effective_range = r_max - r_min
     ang = source[:,:, 0] * fov / 2 * torch.pi / 180
-    r = source[:,:, 1] + 1  + torch.sqrt(torch.tensor(epsilon))
+    r = (source[:,:, 1] + 1  + torch.sqrt(torch.tensor(epsilon)))*effective_range + r_min
 
     temp = torch.polar(r, ang)
 
-    source[:,:, 1] = temp.real - 1 - torch.sqrt(torch.tensor(epsilon))
-    source[:,:, 0] = temp.imag
+    source[:,:, 1] = (temp.real)/effective_range - 1 - torch.sqrt(torch.tensor(epsilon))
+    source[:,:, 0] = (temp.imag-r_min)/effective_range  - torch.sqrt(torch.tensor(epsilon))
     return source
 
 
-def cart_2_pol(source, fov, epsilon=1e-14):
-    x = source[:,:, 0].clone()
-    y = (source[:,:, 1].clone() + 1)
+def cart_2_pol(source, fov, epsilon=1e-14, r_min = 5, r_max = 100):
+    effective_range = r_max-r_min
+    x = source[:,:, 0].clone()*effective_range
+    y = (source[:,:, 1].clone() + 1)*effective_range+ r_min
 
-    source[:,:, 1] = torch.sqrt(x * x + y * y + epsilon) - 1
+    source[:,:, 1] = (torch.sqrt(x * x + y * y + epsilon)- r_min)/effective_range - 1
     source[:,:, 0] = torch.arctan(x / (y + epsilon)) / torch.pi * 2 / fov * 180
     return source
 
@@ -31,7 +33,9 @@ def to_numpy(img):
     return (img.permute(0,2,3,1).squeeze(0).cpu().numpy()).astype(np.uint8)
 class NoiseUtility():
 
-    def __init__(self, shape, fov = 70, device = 'cpu'):
+    def __init__(self, shape, fov = 60, r_min = 20, r_max = 10, device = 'cpu'):
+        self.r_min = r_min
+        self.r_max = r_max
         self.shape = shape
         self.fov = fov
         self.device = device
@@ -52,8 +56,8 @@ class NoiseUtility():
                                  device=self.device,
                                  ones=False, normalized=True).clone().permute(0, 2, 3, 1)
 
-        map = pol_2_cart(source_grid.clone().squeeze(0), self.fov).unsqueeze(0)
-        map_inv = cart_2_pol(source_grid.clone().squeeze(0), self.fov).unsqueeze(0)
+        map = pol_2_cart(source_grid.clone().squeeze(0), self.fov, r_min=self.r_min, r_max=self.r_max).unsqueeze(0)
+        map_inv = cart_2_pol(source_grid.clone().squeeze(0), self.fov,r_min=self.r_min, r_max=self.r_max).unsqueeze(0)
         return map, map_inv
 
     def filter(self, img):
