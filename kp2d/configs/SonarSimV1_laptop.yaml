@@ -23,7 +23,7 @@ wandb:
 datasets:
     augmentation:
         mode: 'sonar_sim'
-        fov: 70
+        fov: 60
     train:
         path: "/home/thomas/Downloads/SonarDataSets/Simulated"
         num_workers: 0

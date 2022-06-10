@@ -13,7 +13,7 @@ from kp2d.utils.image import (image_grid, to_color_normalized,
                               to_gray_normalized)
 from kp2d.utils.keypoints import draw_keypoints
 
-from kp2d.datasets.noise_model import NoiseUtility
+from kp2d.datasets.noise_model import pol_2_cart, cart_2_pol
 
 def build_descriptor_loss(source_des, target_des, source_points, tar_points, tar_points_un, keypoint_mask=None, relax_field=8,epsilon=1e-8, eval_only=False):
     """Desc Head Loss, per-pixel level triplet loss from https://arxiv.org/pdf/1902.11046.pdf..
@@ -103,27 +103,6 @@ def build_descriptor_loss(source_des, target_des, source_points, tar_points, tar
 
     return loss, recall
 
-#TODO: Get proper values for min and max depth of sonar
-def pol_2_cart(source, fov, epsilon = 1e-14):
-    ang = source[:, 0] * fov / 2 * torch.pi / 180
-    r = (source[:, 1] + 1) + torch.sqrt(torch.tensor(epsilon))
-
-    temp = torch.polar(r, ang)
-
-    source[:, 1] = temp.real - 1 - torch.sqrt(torch.tensor(epsilon))
-    source[:, 0] = temp.imag
-    return source
-
-def cart_2_pol(source, fov, epsilon = 1e-14):
-
-    x = source[:, 0].clone()
-    y = source[:, 1].clone() + 1
-
-    source[:, 1] = torch.sqrt(x * x + y * y + epsilon) - 1
-    source[:, 0] = torch.arctan(x / (y + epsilon)) / torch.pi * 2 / fov * 180
-    return source
-
-
 def calculate_distribution_wrapping(image_in):
 
     #this function calculates the positional mean and standard deviation of an image for each row
@@ -181,7 +160,7 @@ def calculate_distribution_wrapping(image_in):
 
 
 
-def warp_homography_batch(sources, homographies, fov = 70, mode='sonar_sim'):
+def warp_homography_batch(noise_util, sources, homographies, fov = 60, mode='sonar_sim'):
     """Batch warp keypoints given homographies.
 
     Parameters
@@ -204,12 +183,18 @@ def warp_homography_batch(sources, homographies, fov = 70, mode='sonar_sim'):
             source = sources[b].clone()
             source = source.view(-1,2)
 
-            source = pol_2_cart(source, fov)
+            source = pol_2_cart(source.unsqueeze(0),
+                                noise_util.fov,
+                                r_min=noise_util.r_min,
+                                r_max=noise_util.r_max).squeeze(0)
 
-            source = torch.addmm(homographies[b,:,2], source, homographies[b,:,:2].t()) #TODO: check if gradients are tracked
+            source = torch.addmm(homographies[b,:,2], source, homographies[b,:,:2].t())
             source.mul_(1/source[:,2].unsqueeze(1))
 
-            source = cart_2_pol(source, fov)
+            source = cart_2_pol(source.unsqueeze(0),
+                                noise_util.fov,
+                                r_min=noise_util.r_min,
+                                r_max=noise_util.r_max).squeeze(0)
 
             source = source[:,:2].contiguous().view(H,W,2)
 
@@ -257,11 +242,12 @@ class KeypointNetwithIOLoss(torch.nn.Module):
         Extra parameters
     """
     def __init__(
-        self, keypoint_loss_weight=1.0, descriptor_loss_weight=2.0, score_loss_weight=1.0, 
+        self, noise_util, keypoint_loss_weight=1.0, descriptor_loss_weight=2.0, score_loss_weight=1.0,
         keypoint_net_learning_rate=0.001, with_io=True, use_color=True, do_upsample=True, 
         do_cross=True, descriptor_loss=True, with_drop=True, keypoint_net_type='KeypointNet',device='cpu', mode = 'sonar_sim', debug = 'False', **kwargs):
 
         super().__init__()
+        self.noise_util = noise_util
         self.mode = mode
         self.device = device
         self.keypoint_loss_weight = keypoint_loss_weight
@@ -348,7 +334,7 @@ class KeypointNetwithIOLoss(torch.nn.Module):
         target_uv_norm = _normalize_uv_coordinates(target_uv_pred, H, W)
         source_uv_norm = _normalize_uv_coordinates(source_uv_pred, H, W)
 
-        source_uv_warped_norm = warp_homography_batch(source_uv_norm, homography, mode=self.mode)
+        source_uv_warped_norm = warp_homography_batch(self.noise_util,source_uv_norm, homography, mode=self.mode)
         source_uv_warped = _denormalize_uv_coordinates(source_uv_warped_norm, H, W)
 
         # Border mask

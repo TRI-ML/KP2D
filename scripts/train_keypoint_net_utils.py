@@ -39,6 +39,7 @@ def image_transforms(noise_util, config):
     if mode=='sonar_sim':
         def train_transforms(sample):
             # sample = resize_sample(sample, image_shape=config.augmentation.image_shape)
+
             sample = noise_util.pol_2_cart_sample(sample)
             sample = noise_util.augment_sample(sample)
 

@@ -67,8 +67,11 @@ def main(file):
     torch.set_num_threads(n_threads)    
     torch.backends.cudnn.benchmark = True
     # torch.backends.cudnn.deterministic = True
-    noise_util = NoiseUtility(config.datasets.augmentation.image_shape,fov=config.datasets.augmentation.fov, device='cpu')
-
+    noise_util = NoiseUtility(config.datasets.augmentation.image_shape,
+                              fov=config.datasets.augmentation.fov,
+                              r_min=config.datasets.augmentation.r_min,
+                              r_max=config.datasets.augmentation.r_max,
+                              device='cpu')
     printcolor('-'*25 + 'SINGLE GPU ' + '-'*25, 'cyan')
     
     if config.arch.seed is not None:
@@ -78,7 +81,7 @@ def main(file):
     printcolor(config.model.params, 'red')
 
     # Setup model and datasets/dataloaders
-    model = KeypointNetwithIOLoss(mode=config.datasets.augmentation.mode,**config.model.params)
+    model = KeypointNetwithIOLoss(noise_util, mode=config.datasets.augmentation.mode,**config.model.params)
     train_dataset, train_loader = setup_datasets_and_dataloaders(config.datasets, noise_util)
     printcolor('({}) length: {}'.format("Train", len(train_dataset)))
 
