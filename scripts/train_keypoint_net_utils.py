@@ -14,9 +14,6 @@ from kp2d.datasets.augmentations import (ha_augment_sample, resize_sample,
 from kp2d.datasets.coco import COCOLoader
 from kp2d.datasets.sonarsim import SonarSimLoader
 
-
-
-
 def sample_to_cuda(data):
     if isinstance(data, str):
         return data
@@ -32,7 +29,6 @@ def sample_to_cuda(data):
         return data_cuda
     else:
         return data.to('cuda')
-
 
 def image_transforms(noise_util, config):
     mode = config.augmentation.mode
@@ -71,9 +67,6 @@ def image_transforms(noise_util, config):
 
     return {'train': train_transforms}
 
-
-
-
 def _set_seeds(seed=42):
     """Set Python random seeding and PyTorch seeds.
     Parameters
@@ -85,7 +78,6 @@ def _set_seeds(seed=42):
     random.seed(seed)
     torch.manual_seed(seed)
     torch.cuda.manual_seed_all(seed)
-
 
 def setup_datasets_and_dataloaders(config,noise_util):
     """Prepare datasets for training, validation and test."""

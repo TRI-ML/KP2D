@@ -4,7 +4,6 @@ from math import pi
 import torch
 from kp2d.utils.image import image_grid
 
-
 def pol_2_cart(source, fov, epsilon=1e-14, r_min = 5, r_max = 100):
     effective_range = r_max - r_min
     ang = source[:,:, 0] * fov / 2 * torch.pi / 180
@@ -15,7 +14,6 @@ def pol_2_cart(source, fov, epsilon=1e-14, r_min = 5, r_max = 100):
     source[:,:, 1] = (temp.real)/effective_range - 1 - torch.sqrt(torch.tensor(epsilon))
     source[:,:, 0] = (temp.imag-r_min)/effective_range  - torch.sqrt(torch.tensor(epsilon))
     return source
-
 
 def cart_2_pol(source, fov, epsilon=1e-14, r_min = 5, r_max = 100):
     effective_range = r_max-r_min
@@ -31,6 +29,7 @@ def to_torch(img, device = 'cpu'):
 
 def to_numpy(img):
     return (img.permute(0,2,3,1).squeeze(0).cpu().numpy()).astype(np.uint8)
+
 class NoiseUtility():
 
     def __init__(self, shape, fov = 60, r_min = 20, r_max = 10, device = 'cpu'):
@@ -41,12 +40,12 @@ class NoiseUtility():
         self.device = device
         self.map, self.map_inv = self.init_map()
         self.kernel = self.init_kernel()
+
     def init_kernel(self):
         kernel = torch.tensor(
             [[0, 0, 0, 0, 0], [0, 0.25, 0.5, 0.25, 0], [0.5, 1, 1, 1, 0.5], [0, 0.25, 0.5, 0.25, 0], [0, 0, 0, 0, 0]])
         kernel = (kernel / torch.sum(kernel)).unsqueeze(0).unsqueeze(0).to(self.device)
         return kernel
-
 
     #TODO: use same function as in the train script
     def init_map(self, epsilon = 1e-8):
@@ -88,7 +87,6 @@ class NoiseUtility():
             return torch.stack((mapped, mapped, mapped), axis=1).to(img.dtype)
         else:
             return mapped.to(img.dtype)
-
 
     # functions dedicated to working with the samples coming from the dataloader
     def pol_2_cart_sample(self, sample):
@@ -149,8 +147,6 @@ class NoiseUtility():
     def cart_2_pol_torch(self, img):
         return torch.nn.functional.grid_sample(img, self.map, mode='bilinear', padding_mode='zeros',
                                                 align_corners=True)
-
-
 
 def create_row_noise_torch(x, amp= 50, device='cpu'):
     noise = x.clone().to(device)

@@ -9,10 +9,7 @@ from matplotlib.cm import get_cmap
 from kp2d.networks.inlier_net import InlierNet
 from kp2d.networks.keypoint_net import KeypointNet
 from kp2d.networks.keypoint_resnet import KeypointResnet
-from kp2d.utils.image import (image_grid, to_color_normalized,
-                              to_gray_normalized)
 from kp2d.utils.keypoints import draw_keypoints
-
 from kp2d.datasets.noise_model import pol_2_cart, cart_2_pol
 
 def build_descriptor_loss(source_des, target_des, source_points, tar_points, tar_points_un, keypoint_mask=None, relax_field=8,epsilon=1e-8, eval_only=False):
@@ -158,8 +155,6 @@ def calculate_distribution_wrapping(image_in):
         image_in[i, 1, :, :] = std_tensor.to(image_in.device)
     return image_in
 
-
-
 def warp_homography_batch(noise_util, sources, homographies, fov = 60, mode='sonar_sim'):
     """Batch warp keypoints given homographies.
 
@@ -210,7 +205,6 @@ def warp_homography_batch(noise_util, sources, homographies, fov = 60, mode='son
             source = source[:, :2].contiguous().view(H, W, 2)
             warped_sources.append(source)
     return torch.stack(warped_sources, dim=0)
-
 
 class KeypointNetwithIOLoss(torch.nn.Module):
     """
@@ -476,8 +470,6 @@ class KeypointNetwithIOLoss(torch.nn.Module):
         inlier_gt = 2 * inlier_mask.float() - 1
 
         return int(inlier_mask.sum() > 10 )*torch.nn.functional.mse_loss(inlier_pred, inlier_gt)
-
-
 
 def _normalize_uv_coordinates(uv_pred, H, W):
     uv_norm = uv_pred.clone()

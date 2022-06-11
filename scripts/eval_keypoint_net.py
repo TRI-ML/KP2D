@@ -20,7 +20,6 @@ from kp2d.evaluation.evaluate import evaluate_keypoint_net
 from kp2d.networks.keypoint_net import KeypointNet
 from kp2d.networks.keypoint_resnet import KeypointResnet
 
-
 def main():
     parser = argparse.ArgumentParser(
         description='Script for KeyPointNet testing',
@@ -82,7 +81,6 @@ def main():
         print('Correctness d3 {:.3f}'.format(c3))
         print('Correctness d5 {:.3f}'.format(c5))
         print('MScore {:.3f}'.format(mscore))
-
 
 if __name__ == '__main__':
     main()

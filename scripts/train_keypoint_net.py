@@ -30,8 +30,6 @@ def parse_args():
         'You need to provide a .ckpt of .yaml file'
     return args
 
-
-
 def adjust_learning_rate(config, optimizer, epoch, decay=0.5, max_decays=4):
     """Sets the learning rate to the initial LR decayed by 0.5 every k epochs"""
     exponent = min(epoch // (config.model.scheduler.lr_epoch_divide_frequency / config.datasets.train.repeat), max_decays)
@@ -121,7 +119,6 @@ def main(file):
         evaluation(config, epoch + 1, model, summary)
     printcolor('Training complete, models saved in {}'.format(config.model.checkpoint_path), "green")
 
-
 def evaluation(config, completed_epoch, model, summary):
     # Set to eval mode
     model.eval()
@@ -173,7 +170,6 @@ def evaluation(config, completed_epoch, model, summary):
             'state_dict': model_submodule(model_submodule(model).keypoint_net).state_dict(),
             'config': config
         }, current_model_path)
-
 
 def train(config, train_loader, model, optimizer, epoch, summary):
     # Set to train mode
@@ -240,7 +236,6 @@ def train(config, train_loader, model, optimizer, epoch, summary):
                     model(data_cuda, debug=True)
                     for k, v in model_submodule(model).vis.items():
                         summary.add_image(k, v)
-
 
 if __name__ == '__main__':
     args = parse_args()
