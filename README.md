@@ -1,6 +1,17 @@
-# Neural Outlier Rejection for Self-Supervised Keypoint Learning
+# KP2D on sonar images
 
-## Overview
+## About
+This repository implements the use of KP2D on sonar images and adds some improvements specifically for sonar images such as:
+
+- support for the representation of pictures in polar coordinates
+- adjusted homograpies for working with polar coordinates
+- custom noise model to make network more robust
+- also fixed some bugs related to the training on RTX 30 series
+- improved training performance by about 30%
+
+## 
+
+## Overview KP2D
 ![](media/imgs/diagram_architecture.png)
 - **IO-Net:** A novel proxy task for the self-supervision of keypoint description. 
 - **KeyPointNet:**  An improved keypoint-network architecture that is especially amenable to robust keypoint detection and description.
