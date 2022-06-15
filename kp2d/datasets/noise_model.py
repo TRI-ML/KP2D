@@ -32,7 +32,7 @@ def to_numpy(img):
 
 class NoiseUtility():
 
-    def __init__(self, shape, fov = 60, r_min = 20, r_max = 10, device = 'cpu'):
+    def __init__(self, shape, fov = 60, r_min = 0.1, r_max = 100, device = 'cpu'):
         self.r_min = r_min
         self.r_max = r_max
         self.shape = shape
@@ -40,6 +40,9 @@ class NoiseUtility():
         self.device = device
         self.map, self.map_inv = self.init_map()
         self.kernel = self.init_kernel()
+        H, W = self.shape
+        self.x_cart_scale = W/2
+        self.y_cart_scale = H/2
 
     def init_kernel(self):
         kernel = torch.tensor(
@@ -152,7 +155,7 @@ def create_row_noise_torch(x, amp= 50, device='cpu'):
     noise = x.clone().to(device)
     amp = torch.randn(1)*20+amp
     for r in range(x.shape[2]):
-        noise[:,:,r,:] =(torch.randn(x.shape[3])*amp-amp/2 + torch.randn(x.shape[3])*amp/2+amp/2).to(device)/(torch.sum(x[:,:,r,:])/np.random.normal(2500,1000,1)+1)
+        noise[:,:,r,:] =(torch.randn(x.shape[3])*amp-amp/2 + torch.randn(x.shape[3])*amp/2+amp/2).to(device)/(torch.sum(x[:,:,r,:])/torch.tensor(np.random.normal(2500,1000,1)).to(device)+1)
     return noise
 
 def create_speckle_noise(x, device = 'cpu'):
