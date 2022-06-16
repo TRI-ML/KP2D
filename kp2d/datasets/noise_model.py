@@ -43,6 +43,7 @@ class NoiseUtility():
         H, W = self.shape
         self.x_cart_scale = W/2
         self.y_cart_scale = H/2
+        self.amp = 20
 
     def init_kernel(self):
         kernel = torch.tensor(
@@ -65,7 +66,7 @@ class NoiseUtility():
     def filter(self, img):
         filtered = img
 
-        noise = create_row_noise_torch(torch.clip(filtered, 2, 50), device=self.device) * 2
+        noise = create_row_noise_torch(torch.clip(filtered, 2, 50),amp=self.amp, device=self.device) * 2
 
         filtered = filtered + noise
         filtered = add_sparkle(filtered, self.kernel, device=self.device)

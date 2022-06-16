@@ -26,7 +26,7 @@ datasets:
         mode: 'sonar_sim'
         fov: 60
         r_min: 0.1
-        r_max: 100
+        r_max: 5
 
     train:
         path: "D:/MachineLearning/SonarData/SonarDataSets/Simulated"

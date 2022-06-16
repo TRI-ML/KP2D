@@ -22,7 +22,9 @@ wandb:
 datasets:
     augmentation:
         mode: 'sonar_sim'
-        fov: 70
+        fov: 60
+        r_min: 0.1
+        r_max: 5
 
     train:
         path: '../../../scratch/rueeggth/dataset/SonarDataSets/Simulated'
