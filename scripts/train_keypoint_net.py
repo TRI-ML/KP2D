@@ -108,7 +108,7 @@ def main(file):
 
 
     # Initial evaluation
-    evaluation(config, 0, model, summary)
+    evaluation(config, 0, model, summary,noise_util)
     # Train
     for epoch in range(config.arch.epochs):
         # train for one epoch (only log if eval to have aligned steps...)
@@ -116,10 +116,10 @@ def main(file):
         train(config, train_loader, model, optimizer, epoch, summary)
 
         # Model checkpointing, eval, and logging
-        evaluation(config, epoch + 1, model, summary)
+        evaluation(config, epoch + 1, model, summary,noise_util)
     printcolor('Training complete, models saved in {}'.format(config.model.checkpoint_path), "green")
 
-def evaluation(config, completed_epoch, model, summary):
+def evaluation(config, completed_epoch, model, summary,noise_util):
     # Set to eval mode
     model.eval()
     model.training = False
@@ -127,7 +127,7 @@ def evaluation(config, completed_epoch, model, summary):
     use_color = config.model.params.use_color
 
     eval_shape = config.datasets.augmentation.image_shape[::-1]
-    eval_params = []#[{'res': eval_shape, 'top_k': 300}]
+    eval_params = [{'res': eval_shape, 'top_k': 300}]
     for params in eval_params:
         hp_dataset = PatchesDataset(root_dir=config.datasets.val.path, use_color=use_color, output_shape=params['res'], type='a')
 
@@ -143,6 +143,7 @@ def evaluation(config, completed_epoch, model, summary):
         printcolor('Evaluating for {} -- top_k {}'.format(params['res'], params['top_k']))
         rep, loc, c1, c3, c5, mscore = evaluate_keypoint_net(data_loader,
                                                             model_submodule(model).keypoint_net,
+                                                             noise_util,
                                                             output_shape=params['res'],
                                                             top_k=params['top_k'],
                                                             use_color=use_color)

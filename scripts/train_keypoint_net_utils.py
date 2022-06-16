@@ -86,7 +86,7 @@ def setup_datasets_and_dataloaders(config,noise_util):
         _set_seeds(42 + worker_id)
 
     data_transforms = image_transforms(noise_util,config)
-    train_dataset = SonarSimLoader(config.train.path, data_transform=data_transforms['train'])
+    train_dataset = SonarSimLoader(config.train.path, noise_util,data_transform=data_transforms['train'])
     # Concatenate dataset to produce a larger one
     if config.train.repeat > 1:
         train_dataset = ConcatDataset([train_dataset for _ in range(config.train.repeat)])

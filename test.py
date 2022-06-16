@@ -3,10 +3,11 @@ from kp2d.networks.keypoint_net import KeypointNet
 import cv2
 from kp2d.utils.keypoints import draw_keypoints
 import glob
-model_path = r"D:\PycharmProjects\KP2D\data\models\kp2d/model.ckpt"
-model_path_2 = r"D:\PycharmProjects\KP2D\data\models\kp2d/v4.ckpt"
-picture_path = r"D:\MachineLearning\SonarData\SonarDataSets\Real\FoldingChair3m"
 
+import numpy as np
+model_path = r"D:\PycharmProjects\KP2D\data\models\kp2d\v4.ckpt"
+model_path_2 = r"C:\Users\Dr. Paul von Immel\Downloads\sonar_sim_noise/model.ckpt"
+picture_path = r"D:\MachineLearning\SonarData\SonarDataSets\Simulated\GrateSceneScan"
 #load model
 checkpoint = torch.load(model_path)
 model_args = checkpoint['config']['model']['params']
@@ -33,7 +34,7 @@ keypoint_net_2.eval()
 
 eval_params = [{'res': (320, 240), 'top_k': 300, }]
 eval_params += [{'res': (640, 480), 'top_k': 1000, }]
-
+i = 0
 for filename in glob.glob(picture_path + '/*.jpg'):
 #load picture
 
@@ -43,13 +44,13 @@ for filename in glob.glob(picture_path + '/*.jpg'):
     img_ten =img_ten.permute(0,3,1,2)
 
 
-
+    k = 300
     #compute points
 
     source_score, source_uv_pred, source_feat = keypoint_net((img_ten.float()/250.).to('cuda'))
     source_score_2, source_uv_pred_2, source_feat_2 = keypoint_net_2((img_ten.float()/250.).to('cuda'))
-    _, top_k = source_score.view(1,-1).topk(300, dim=1)
-    _, top_k_2 = source_score_2.view(1,-1).topk(300, dim=1)
+    _, top_k = source_score.view(1,-1).topk(k, dim=1)
+    _, top_k_2 = source_score_2.view(1,-1).topk(k, dim=1)
 
     #plot points on picture
     vis_ori = draw_keypoints(img, source_uv_pred.view(1,2,-1)[:,:,top_k[0].squeeze()],(255,0,255))
@@ -57,7 +58,8 @@ for filename in glob.glob(picture_path + '/*.jpg'):
     #show picture
     cv2.imshow("img", vis_ori)
     cv2.imshow("img_2", vis_ori_2)
-    cv2.waitKey(0)
+    cv2.waitKey(1)
+    i+=1
 cv2.destroyAllWindows()
 
 # def _normalize_uv_coordinates(uv_pred, H, W):

@@ -7,12 +7,12 @@ from tqdm import tqdm
 
 from kp2d.evaluation.descriptor_evaluation import (compute_homography,
                                                    compute_matching_score)
-from kp2d.evaluation.detector_evaluation import compute_repeatability
+from kp2d.evaluation.detector_evaluation import compute_repeatability, compute_repeatability_sonar
 from kp2d.utils.image import to_color_normalized, to_gray_normalized
-
+from kp2d.datasets.noise_model import pol_2_cart
 #TODO: adjust evaluation to use polar/cart transforms
 
-def evaluate_keypoint_net(data_loader, keypoint_net, output_shape=(320, 240), top_k=300, use_color=True):
+def evaluate_keypoint_net(data_loader, keypoint_net,noise_util, output_shape=(320, 240), top_k=300, use_color=True):
     """Keypoint net evaluation script. 
 
     Parameters
@@ -71,7 +71,7 @@ def evaluate_keypoint_net(data_loader, keypoint_net, output_shape=(320, 240), to
                     'warped_desc': desc2}
             
             # Compute repeatabilty and localization error
-            _, _, rep, loc_err = compute_repeatability(data, keep_k_points=top_k, distance_thresh=3)
+            _, _, rep, loc_err = compute_repeatability_sonar(data,noise_util, keep_k_points=top_k, distance_thresh=3)
             repeatability.append(rep)
             localization_err.append(loc_err)
 
