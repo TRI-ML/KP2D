@@ -108,7 +108,7 @@ def main(file):
 
 
     # Initial evaluation
-    evaluation(config, 0, model, summary,noise_util)
+    #evaluation(config, 0, model, summary,noise_util)
     # Train
     for epoch in range(config.arch.epochs):
         # train for one epoch (only log if eval to have aligned steps...)

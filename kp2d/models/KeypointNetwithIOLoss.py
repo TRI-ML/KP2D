@@ -155,7 +155,7 @@ def calculate_distribution_wrapping(image_in):
         image_in[i, 1, :, :] = std_tensor.to(image_in.device)
     return image_in
 
-def warp_homography_batch(noise_util, sources, homographies, fov = 60, mode='sonar_sim'):
+def warp_homography_batch(noise_util, sources, homographies, mode='sonar_sim'):
     """Batch warp keypoints given homographies.
 
     Parameters
@@ -180,16 +180,16 @@ def warp_homography_batch(noise_util, sources, homographies, fov = 60, mode='son
 
             source = pol_2_cart(source.unsqueeze(0),
                                 noise_util.fov,
-                                r_min=noise_util.r_min,
-                                r_max=noise_util.r_max).squeeze(0)
+                                noise_util.r_min,
+                                noise_util.r_max).squeeze(0)
 
             source = torch.addmm(homographies[b,:,2], source, homographies[b,:,:2].t())
             source.mul_(1/source[:,2].unsqueeze(1))
 
             source = cart_2_pol(source.unsqueeze(0),
                                 noise_util.fov,
-                                r_min=noise_util.r_min,
-                                r_max=noise_util.r_max).squeeze(0)
+                                noise_util.r_min,
+                                noise_util.r_max).squeeze(0)
 
             source = source[:,:2].contiguous().view(H,W,2)
 
